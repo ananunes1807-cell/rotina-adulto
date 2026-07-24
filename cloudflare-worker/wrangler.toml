@@ -1,0 +1,16 @@
+name = "rotina-adulto-worker"
+main = "worker.js"
+compatibility_date = "2026-07-01"
+
+# Roda todo minuto — checa se alguma tarefa bate com o horário agora.
+# É bem dentro da cota grátis (veja README.md pra contas).
+[triggers]
+crons = ["* * * * *"]
+
+[vars]
+PROJECT_ID = "rotina-adulto"
+
+# Segredos (NÃO ficam neste arquivo — são configurados com `wrangler secret put`,
+# ver README.md da raiz do projeto):
+#   SERVICE_ACCOUNT_JSON
+#   ANTHROPIC_API_KEY

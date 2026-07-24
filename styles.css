@@ -1,0 +1,193 @@
+:root{
+  --stone: #EDEAE3;
+  --stone-alto: #F7F5F0;
+  --carvao: #2B2A28;
+  --carvao-suave: #5C5A54;
+  --sage: #4C5B43;
+  --sage-claro: #7C8C6E;
+  --sage-fundo: #E3E8DC;
+  --argila: #A6785F;
+  --linha: #DAD5C9;
+  --raio: 14px;
+  --raio-grande: 22px;
+  --sombra: 0 8px 24px -12px rgba(43,42,40,0.18);
+  font-size: 16px;
+}
+
+*{ box-sizing: border-box; }
+html,body{ height:100%; }
+body{
+  margin:0;
+  background: var(--stone);
+  color: var(--carvao);
+  font-family: 'Inter', system-ui, sans-serif;
+  -webkit-font-smoothing: antialiased;
+}
+
+h1,h2{ font-family:'Fraunces', serif; font-weight:600; margin:0; }
+
+.tela{ min-height:100dvh; }
+
+/* ---------- Login ---------- */
+.tela-login{ display:flex; align-items:center; justify-content:center; padding:24px; }
+.login-card{
+  background: var(--stone-alto);
+  border-radius: var(--raio-grande);
+  box-shadow: var(--sombra);
+  padding: 40px 32px;
+  max-width: 360px;
+  width:100%;
+  text-align:center;
+}
+.marca{ font-size:2.4rem; color:var(--sage); }
+.subtitulo{ color:var(--carvao-suave); margin: 8px 0 28px; }
+.texto-status{ margin-top:14px; font-size:.85rem; color:var(--carvao-suave); min-height:1.2em; }
+
+/* ---------- Botões ---------- */
+.botao{
+  font-family:'Inter', sans-serif;
+  font-weight:600;
+  font-size:.95rem;
+  border:none;
+  border-radius:999px;
+  padding:14px 22px;
+  cursor:pointer;
+  transition: transform .12s ease, box-shadow .12s ease;
+}
+.botao:active{ transform: scale(.97); }
+.botao:focus-visible{ outline:3px solid var(--sage-claro); outline-offset:2px; }
+.botao-primario{ background: var(--sage); color:#fff; width:100%; }
+.botao-primario:hover{ box-shadow: 0 6px 16px -6px rgba(76,91,67,.55); }
+.botao-secundario{ background: transparent; color:var(--sage); border:1.5px solid var(--sage); width:100%; }
+.botao-icone{
+  background:none; border:none; font-size:1.4rem; line-height:1;
+  color:var(--carvao-suave); cursor:pointer; padding:6px 10px; border-radius:50%;
+}
+.botao-icone:hover{ background: var(--linha); }
+
+/* ---------- Topo ---------- */
+.topo{
+  display:flex; justify-content:space-between; align-items:flex-start;
+  padding: 24px 20px 4px;
+  position:relative;
+}
+.topo-saudacao{ font-family:'Fraunces', serif; font-size:1.6rem; margin:0; }
+.topo-data{ margin:2px 0 0; color:var(--carvao-suave); font-size:.9rem; text-transform:capitalize; }
+
+.menu-painel{
+  position:absolute; top:60px; right:16px; z-index:20;
+  background:#fff; border-radius:var(--raio); box-shadow:var(--sombra);
+  display:flex; flex-direction:column; min-width:220px; overflow:hidden;
+}
+.item-menu{
+  background:none; border:none; text-align:left; padding:14px 16px;
+  font-family:'Inter'; font-size:.9rem; cursor:pointer; color:var(--carvao);
+  border-bottom:1px solid var(--linha);
+}
+.item-menu:last-child{ border-bottom:none; }
+.item-menu:hover{ background: var(--stone); }
+.item-menu-sair{ color:var(--argila); }
+
+.aviso{
+  margin:10px 20px 0; padding:10px 14px; background:var(--sage-fundo);
+  border-radius:10px; font-size:.85rem; color:var(--sage);
+}
+
+/* ---------- Trilha do dia (elemento de assinatura) ---------- */
+.trilha-wrap{ padding: 22px 20px 6px; }
+.trilha-legenda{ font-size:.78rem; text-transform:uppercase; letter-spacing:.08em; color:var(--carvao-suave); margin:0 0 12px; }
+.trilha{
+  list-style:none; margin:0; padding:0;
+  display:flex; gap:6px; align-items:center; overflow-x:auto;
+  padding-bottom:4px;
+}
+.trilha-no{
+  flex:0 0 auto; width:14px; height:14px; border-radius:50%;
+  border:2px solid var(--linha); background:#fff; position:relative;
+}
+.trilha-linha{ flex:0 0 auto; width:18px; height:2px; background:var(--linha); }
+.trilha-no.feito{ background:var(--sage); border-color:var(--sage); }
+.trilha-linha.feita{ background:var(--sage-claro); }
+.trilha-no.agora{
+  border-color:var(--argila); box-shadow:0 0 0 4px var(--sage-fundo);
+}
+.trilha-no.agora::after{
+  content:''; position:absolute; inset:-5px; border-radius:50%;
+  border:2px solid var(--argila); animation:pulso 1.8s ease-in-out infinite;
+}
+@keyframes pulso{ 0%{ transform:scale(.85); opacity:.9;} 100%{ transform:scale(1.6); opacity:0;} }
+@media (prefers-reduced-motion: reduce){ .trilha-no.agora::after{ animation:none; } }
+
+/* ---------- Card "agora" ---------- */
+.agora-card{
+  margin: 14px 20px 0; padding:22px;
+  background: var(--sage); color:#fff;
+  border-radius: var(--raio-grande); box-shadow: var(--sombra);
+}
+.agora-etiqueta{ margin:0; font-size:.75rem; text-transform:uppercase; letter-spacing:.1em; opacity:.85; }
+.agora-nome{ color:#fff; font-size:1.6rem; margin:6px 0 2px; }
+.agora-horario{ font-family:'IBM Plex Mono', monospace; margin:0 0 18px; opacity:.9; }
+.agora-acoes{ display:flex; flex-direction:column; gap:10px; }
+.agora-acoes .botao-secundario{ color:#fff; border-color:rgba(255,255,255,.6); }
+
+/* ---------- Lista do dia ---------- */
+.lista-wrap{ padding: 26px 20px 100px; }
+.lista-titulo{ font-size:.78rem; text-transform:uppercase; letter-spacing:.08em; color:var(--carvao-suave); margin:0 0 10px; }
+.lista-tarefas{ list-style:none; margin:0; padding:0; display:flex; flex-direction:column; gap:8px; }
+.tarefa-item{
+  display:flex; align-items:center; gap:12px;
+  background:var(--stone-alto); border-radius: var(--raio); padding:14px 16px;
+}
+.tarefa-item.concluida{ opacity:.55; }
+.tarefa-check{
+  width:26px; height:26px; border-radius:50%; flex:0 0 auto;
+  border:2px solid var(--sage-claro); background:#fff; cursor:pointer;
+  display:flex; align-items:center; justify-content:center; font-size:.85rem; color:#fff;
+}
+.tarefa-item.concluida .tarefa-check{ background:var(--sage); border-color:var(--sage); }
+.tarefa-info{ flex:1; min-width:0; }
+.tarefa-nome{ margin:0; font-weight:600; font-size:.95rem; }
+.tarefa-item.concluida .tarefa-nome{ text-decoration: line-through; }
+.tarefa-meta{ margin:2px 0 0; font-size:.78rem; color:var(--carvao-suave); font-family:'IBM Plex Mono', monospace; }
+.tarefa-categoria{
+  font-size:.68rem; padding:3px 9px; border-radius:999px; background:var(--sage-fundo); color:var(--sage);
+  text-transform:uppercase; letter-spacing:.04em; flex:0 0 auto;
+}
+
+.vazio{ text-align:center; padding:40px 20px; color:var(--carvao-suave); }
+.vazio .botao{ max-width:260px; margin:16px auto 0; }
+
+/* ---------- Diálogos ---------- */
+.dialogo{
+  border:none; border-radius: var(--raio-grande); padding:24px;
+  max-width:420px; width:90vw; box-shadow: var(--sombra);
+  font-family:'Inter', sans-serif;
+}
+.dialogo::backdrop{ background: rgba(43,42,40,.45); }
+.form-tarefa label{ display:block; margin-top:16px; font-size:.85rem; color:var(--carvao-suave); font-weight:600; }
+.form-tarefa input, .form-tarefa select{
+  width:100%; margin-top:6px; padding:12px; border-radius:10px; border:1.5px solid var(--linha);
+  font-family:'Inter'; font-size:.95rem; color:var(--carvao);
+}
+.dias-fieldset{ border:none; padding:0; margin-top:16px; }
+.dias-fieldset legend{ font-size:.85rem; color:var(--carvao-suave); font-weight:600; padding:0; }
+.dias-grade{ display:grid; grid-template-columns:repeat(7,1fr); gap:4px; margin-top:8px; }
+.dias-grade label{ display:flex; flex-direction:column; align-items:center; font-size:.7rem; color:var(--carvao-suave); font-weight:500; margin:0; }
+.form-acoes{ display:flex; gap:10px; margin-top:24px; }
+
+/* ---------- Chat ---------- */
+.dialogo-chat{ display:flex; flex-direction:column; height:70vh; max-height:560px; }
+.chat-cabecalho{ display:flex; justify-content:space-between; align-items:center; }
+.chat-mensagens{ flex:1; overflow-y:auto; margin:14px 0; display:flex; flex-direction:column; gap:10px; }
+.msg{ max-width:85%; padding:10px 14px; border-radius:14px; font-size:.9rem; line-height:1.4; }
+.msg-ia{ background:var(--stone); align-self:flex-start; border-bottom-left-radius:4px; }
+.msg-eu{ background:var(--sage); color:#fff; align-self:flex-end; border-bottom-right-radius:4px; }
+.chat-form{ display:flex; gap:8px; }
+.chat-form input{
+  flex:1; padding:12px 14px; border-radius:999px; border:1.5px solid var(--linha); font-family:'Inter';
+}
+.chat-form .botao{ width:auto; padding:12px 20px; }
+
+@media (min-width: 640px){
+  .tela-app{ max-width:560px; margin:0 auto; }
+}

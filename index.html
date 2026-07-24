@@ -1,0 +1,129 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<meta name="theme-color" content="#4C5B43">
+<title>Rotina — hoje</title>
+<link rel="manifest" href="./manifest.webmanifest">
+<link rel="icon" href="./icon-192.png">
+<link rel="apple-touch-icon" href="./icon-192.png">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Fraunces:opsz,wght@9..144,500;9..144,600&family=Inter:wght@400;500;600;700&family=IBM+Plex+Mono:wght@500&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="./styles.css?v=1">
+</head>
+<body>
+
+<div id="loginScreen" class="tela tela-login">
+  <div class="login-card">
+    <h1 class="marca">Rotina</h1>
+    <p class="subtitulo">Um passo de cada vez.</p>
+    <button id="loginBtn" class="botao botao-primario">Entrar com Google</button>
+    <p id="loginStatus" class="texto-status"></p>
+  </div>
+</div>
+
+<div id="appScreen" class="tela tela-app" hidden>
+
+  <header class="topo">
+    <div>
+      <p class="topo-saudacao" id="saudacao">Olá</p>
+      <p class="topo-data" id="dataHoje"></p>
+    </div>
+    <button id="menuBtn" class="botao-icone" aria-label="Menu" aria-expanded="false">⋯</button>
+  </header>
+
+  <div id="menuPainel" class="menu-painel" hidden>
+    <button id="notifBtn" class="item-menu">Ativar notificações neste aparelho</button>
+    <button id="novaTarefaBtn" class="item-menu">+ Nova tarefa</button>
+    <button id="logoutBtn" class="item-menu item-menu-sair">Sair</button>
+  </div>
+
+  <p id="notifAviso" class="aviso" hidden></p>
+
+  <!-- Elemento de assinatura: a trilha do dia -->
+  <section class="trilha-wrap">
+    <p class="trilha-legenda">Sua trilha de hoje</p>
+    <ol id="trilha" class="trilha"></ol>
+  </section>
+
+  <section id="agoraCard" class="agora-card" hidden>
+    <p class="agora-etiqueta">Agora</p>
+    <h2 id="agoraNome" class="agora-nome"></h2>
+    <p id="agoraHorario" class="agora-horario"></p>
+    <div class="agora-acoes">
+      <button id="agoraConcluir" class="botao botao-primario">Concluí</button>
+      <button id="agoraChat" class="botao botao-secundario">Preciso de ajuda com isso</button>
+    </div>
+  </section>
+
+  <section id="listaVazia" class="vazio" hidden>
+    <p>Nenhuma tarefa cadastrada ainda.</p>
+    <button id="listaVaziaBtn" class="botao botao-primario">Criar a primeira tarefa</button>
+  </section>
+
+  <section class="lista-wrap">
+    <p class="lista-titulo">O dia inteiro</p>
+    <ul id="listaTarefas" class="lista-tarefas"></ul>
+  </section>
+
+</div>
+
+<!-- Formulário de nova tarefa -->
+<dialog id="tarefaDialog" class="dialogo">
+  <form id="tarefaForm" method="dialog" class="form-tarefa">
+    <h2>Nova tarefa</h2>
+    <label>
+      Nome
+      <input type="text" id="campoNome" required maxlength="60" placeholder="Ex: escovar os dentes">
+    </label>
+    <label>
+      Categoria
+      <select id="campoCategoria">
+        <option value="higiene">Higiene</option>
+        <option value="casa">Casa</option>
+        <option value="trabalho">Trabalho</option>
+        <option value="saude">Saúde</option>
+        <option value="outro">Outro</option>
+      </select>
+    </label>
+    <label>
+      Horário
+      <input type="time" id="campoHorario" required>
+    </label>
+    <fieldset class="dias-fieldset">
+      <legend>Repetir em</legend>
+      <div class="dias-grade" id="diasGrade">
+        <label><input type="checkbox" value="0" checked> dom</label>
+        <label><input type="checkbox" value="1" checked> seg</label>
+        <label><input type="checkbox" value="2" checked> ter</label>
+        <label><input type="checkbox" value="3" checked> qua</label>
+        <label><input type="checkbox" value="4" checked> qui</label>
+        <label><input type="checkbox" value="5" checked> sex</label>
+        <label><input type="checkbox" value="6" checked> sáb</label>
+      </div>
+    </fieldset>
+    <div class="form-acoes">
+      <button type="button" id="cancelarTarefa" class="botao botao-secundario">Cancelar</button>
+      <button type="submit" class="botao botao-primario">Salvar</button>
+    </div>
+  </form>
+</dialog>
+
+<!-- Chat de apoio por tarefa -->
+<dialog id="chatDialog" class="dialogo dialogo-chat">
+  <div class="chat-cabecalho">
+    <h2 id="chatTitulo">Conversar</h2>
+    <button id="fecharChat" class="botao-icone" aria-label="Fechar">×</button>
+  </div>
+  <div id="chatMensagens" class="chat-mensagens" aria-live="polite"></div>
+  <form id="chatForm" class="chat-form">
+    <input type="text" id="chatInput" placeholder="O que está travando agora?" autocomplete="off">
+    <button type="submit" class="botao botao-primario">Enviar</button>
+  </form>
+</dialog>
+
+<script type="module" src="./app.js"></script>
+</body>
+</html>

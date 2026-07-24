@@ -1,0 +1,5 @@
+node_modules/
+*.json.key
+firebase-service-account*.json
+.DS_Store
+.wrangler/
