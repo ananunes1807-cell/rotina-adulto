@@ -8,7 +8,7 @@ compatibility_date = "2026-07-01"
 crons = ["* * * * *"]
 
 [vars]
-PROJECT_ID = "rotina-adulto"
+PROJECT_ID = "rotina-adulto-91820"
 
 # Segredos (NÃO ficam neste arquivo — são configurados com `wrangler secret put`,
 # ver README.md da raiz do projeto):

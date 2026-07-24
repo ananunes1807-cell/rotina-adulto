@@ -21,7 +21,7 @@ const FIREBASE_CONFIG = {
 };
 const VAPID_KEY = 'BFcWyXz4SErk3Wm7F-6Ba1PVfPs1UcEwcNI_95gzHhRZb9zA3ymw0HwNe0oE0mpLYQ_O8p2x3vskABaBnxpvxqI';
 // URL do Cloudflare Worker (fica pronta depois do "wrangler deploy", ver README)
-const WORKER_CHAT_URL = 'COLE_AQUI_DEPOIS';
+const WORKER_CHAT_URL = 'https://rotina-adulto-worker.ananunes1807.workers.dev/chat';
 // =======================================================
 
 const app = initializeApp(FIREBASE_CONFIG);
