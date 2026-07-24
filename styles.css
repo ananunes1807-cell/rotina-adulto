@@ -153,6 +153,12 @@ h1,h2{ font-family:'Fraunces', serif; font-weight:600; margin:0; }
   font-size:.68rem; padding:3px 9px; border-radius:999px; background:var(--sage-fundo); color:var(--sage);
   text-transform:uppercase; letter-spacing:.04em; flex:0 0 auto;
 }
+.tarefa-acoes{ display:flex; gap:2px; flex:0 0 auto; }
+.tarefa-acao{
+  background:none; border:none; font-size:.95rem; line-height:1;
+  color:var(--carvao-suave); cursor:pointer; padding:6px; border-radius:50%;
+}
+.tarefa-acao:hover{ background:var(--linha); }
 
 .vazio{ text-align:center; padding:40px 20px; color:var(--carvao-suave); }
 .vazio .botao{ max-width:260px; margin:16px auto 0; }
@@ -164,11 +170,12 @@ h1,h2{ font-family:'Fraunces', serif; font-weight:600; margin:0; }
   font-family:'Inter', sans-serif;
 }
 .dialogo::backdrop{ background: rgba(43,42,40,.45); }
-.form-tarefa label{ display:block; margin-top:16px; font-size:.85rem; color:var(--carvao-suave); font-weight:600; }
-.form-tarefa input, .form-tarefa select{
+.dialogo label{ display:block; margin-top:16px; font-size:.85rem; color:var(--carvao-suave); font-weight:600; }
+.dialogo input, .dialogo select{
   width:100%; margin-top:6px; padding:12px; border-radius:10px; border:1.5px solid var(--linha);
   font-family:'Inter'; font-size:.95rem; color:var(--carvao);
 }
+.dia-anterior-lista{ margin-top:16px; max-height:40vh; overflow-y:auto; }
 .dias-fieldset{ border:none; padding:0; margin-top:16px; }
 .dias-fieldset legend{ font-size:.85rem; color:var(--carvao-suave); font-weight:600; padding:0; }
 .dias-grade{ display:grid; grid-template-columns:repeat(7,1fr); gap:4px; margin-top:8px; }

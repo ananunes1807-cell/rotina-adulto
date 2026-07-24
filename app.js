@@ -87,18 +87,25 @@ function escutarDados() {
 }
 
 // ---------- Data / hora ----------
-function hojeISO() {
-  const d = new Date();
+function dataISO(d) {
   return `${d.getFullYear()}-${String(d.getMonth()+1).padStart(2,'0')}-${String(d.getDate()).padStart(2,'0')}`;
+}
+function hojeISO() {
+  return dataISO(new Date());
 }
 $('dataHoje').textContent = new Date().toLocaleDateString('pt-BR', { weekday:'long', day:'numeric', month:'long' });
 
-function tarefasDeHoje() {
+function tarefasDoDia(dataStr) {
   if (!dadosUsuario) return [];
-  const diaSemana = new Date().getDay();
+  const [ano, mes, dia] = dataStr.split('-').map(Number);
+  const diaSemana = new Date(ano, mes - 1, dia).getDay();
   return (dadosUsuario.tarefas || [])
     .filter(t => t.ativa && (!t.dias || t.dias.length === 0 || t.dias.includes(diaSemana)))
     .sort((a,b) => a.horario.localeCompare(b.horario));
+}
+
+function tarefasDeHoje() {
+  return tarefasDoDia(hojeISO());
 }
 
 function estaConcluida(id) {
@@ -113,6 +120,7 @@ function renderizarTudo() {
   renderizarTrilha(tarefas);
   renderizarAgora(tarefas);
   renderizarLista(tarefas);
+  if ($('diaAnteriorDialog').open) renderizarDiaAnterior();
 }
 
 function proximaTarefa(tarefas) {
@@ -171,11 +179,17 @@ function renderizarLista(tarefas) {
         <p class="tarefa-meta"></p>
       </div>
       <span class="tarefa-categoria"></span>
+      <div class="tarefa-acoes">
+        <button type="button" class="tarefa-acao tarefa-editar" aria-label="Editar tarefa" title="Editar">✎</button>
+        <button type="button" class="tarefa-acao tarefa-excluir" aria-label="Excluir tarefa" title="Excluir">🗑</button>
+      </div>
     `;
     li.querySelector('.tarefa-nome').textContent = t.nome;
     li.querySelector('.tarefa-meta').textContent = t.horario;
     li.querySelector('.tarefa-categoria').textContent = t.categoria;
     li.querySelector('.tarefa-check').addEventListener('click', () => marcarConcluida(t.id, !feita));
+    li.querySelector('.tarefa-editar').addEventListener('click', () => abrirFormEdicaoTarefa(t));
+    li.querySelector('.tarefa-excluir').addEventListener('click', () => excluirTarefa(t.id));
     ul.appendChild(li);
   });
 }
@@ -189,27 +203,111 @@ async function marcarConcluida(taskId, valor) {
   await updateDoc(doc(db, 'usuarios', uid), { concluidas: mapa });
 }
 
-// ---------- Nova tarefa ----------
-$('novaTarefaBtn').addEventListener('click', () => { fecharMenu(); $('tarefaDialog').showModal(); });
-$('listaVaziaBtn').addEventListener('click', () => $('tarefaDialog').showModal());
-$('cancelarTarefa').addEventListener('click', () => $('tarefaDialog').close());
+// ---------- Nova tarefa / edição ----------
+let tarefaEmEdicao = null;
+
+function abrirFormNovaTarefa() {
+  tarefaEmEdicao = null;
+  $('tarefaForm').reset();
+  $('tarefaDialogTitulo').textContent = 'Nova tarefa';
+  $('tarefaDialog').showModal();
+}
+
+function abrirFormEdicaoTarefa(tarefa) {
+  tarefaEmEdicao = tarefa;
+  $('campoNome').value = tarefa.nome;
+  $('campoCategoria').value = tarefa.categoria;
+  $('campoHorario').value = tarefa.horario;
+  const diasAtivos = new Set(tarefa.dias && tarefa.dias.length ? tarefa.dias : [0,1,2,3,4,5,6]);
+  document.querySelectorAll('#diasGrade input').forEach(input => {
+    input.checked = diasAtivos.has(Number(input.value));
+  });
+  $('tarefaDialogTitulo').textContent = 'Editar tarefa';
+  $('tarefaDialog').showModal();
+}
+
+$('novaTarefaBtn').addEventListener('click', () => { fecharMenu(); abrirFormNovaTarefa(); });
+$('listaVaziaBtn').addEventListener('click', () => abrirFormNovaTarefa());
+$('cancelarTarefa').addEventListener('click', () => { $('tarefaDialog').close(); tarefaEmEdicao = null; });
 
 $('tarefaForm').addEventListener('submit', async (e) => {
   const dias = [...document.querySelectorAll('#diasGrade input:checked')].map(i => Number(i.value));
-  const nova = {
-    id: crypto.randomUUID(),
+  const campos = {
     nome: $('campoNome').value.trim(),
     categoria: $('campoCategoria').value,
     horario: $('campoHorario').value,
-    dias,
-    ativa: true,
-    ordem: (dadosUsuario.tarefas || []).length,
-    criadoEm: new Date().toISOString()
+    dias
   };
-  const tarefas = [...(dadosUsuario.tarefas || []), nova];
+  let tarefas;
+  if (tarefaEmEdicao) {
+    tarefas = (dadosUsuario.tarefas || []).map(t => t.id === tarefaEmEdicao.id ? { ...t, ...campos } : t);
+  } else {
+    const nova = {
+      id: crypto.randomUUID(),
+      ...campos,
+      ativa: true,
+      ordem: (dadosUsuario.tarefas || []).length,
+      criadoEm: new Date().toISOString()
+    };
+    tarefas = [...(dadosUsuario.tarefas || []), nova];
+  }
   await updateDoc(doc(db, 'usuarios', uid), { tarefas });
   $('tarefaForm').reset();
+  tarefaEmEdicao = null;
 });
+
+async function excluirTarefa(id) {
+  if (!confirm('Excluir esta tarefa? Essa ação não pode ser desfeita.')) return;
+  const tarefas = (dadosUsuario.tarefas || []).filter(t => t.id !== id);
+  await updateDoc(doc(db, 'usuarios', uid), { tarefas });
+}
+
+// ---------- Marcar dia anterior ----------
+$('diaAnteriorBtn').addEventListener('click', () => {
+  fecharMenu();
+  const ontem = new Date();
+  ontem.setDate(ontem.getDate() - 1);
+  const ontemISO = dataISO(ontem);
+  $('campoDataAnterior').value = ontemISO;
+  $('campoDataAnterior').max = ontemISO;
+  renderizarDiaAnterior();
+  $('diaAnteriorDialog').showModal();
+});
+$('campoDataAnterior').addEventListener('change', renderizarDiaAnterior);
+$('fecharDiaAnterior').addEventListener('click', () => $('diaAnteriorDialog').close());
+
+function renderizarDiaAnterior() {
+  const data = $('campoDataAnterior').value;
+  const tarefas = data ? tarefasDoDia(data) : [];
+  const ul = $('listaDiaAnterior');
+  ul.innerHTML = '';
+  $('diaAnteriorVazio').hidden = tarefas.length > 0;
+  const concluidasDoDia = (dadosUsuario.concluidas || {})[data] || [];
+  tarefas.forEach(t => {
+    const feita = concluidasDoDia.includes(t.id);
+    const li = document.createElement('li');
+    li.className = 'tarefa-item' + (feita ? ' concluida' : '');
+    li.innerHTML = `
+      <button class="tarefa-check" aria-label="Marcar concluída">${feita ? '✓' : ''}</button>
+      <div class="tarefa-info">
+        <p class="tarefa-nome"></p>
+        <p class="tarefa-meta"></p>
+      </div>
+    `;
+    li.querySelector('.tarefa-nome').textContent = t.nome;
+    li.querySelector('.tarefa-meta').textContent = t.horario;
+    li.querySelector('.tarefa-check').addEventListener('click', () => marcarConcluidaData(t.id, data, !feita));
+    ul.appendChild(li);
+  });
+}
+
+async function marcarConcluidaData(taskId, data, valor) {
+  const mapa = { ...(dadosUsuario.concluidas || {}) };
+  const lista = new Set(mapa[data] || []);
+  if (valor) lista.add(taskId); else lista.delete(taskId);
+  mapa[data] = [...lista];
+  await updateDoc(doc(db, 'usuarios', uid), { concluidas: mapa });
+}
 
 // ---------- Menu ----------
 $('menuBtn').addEventListener('click', () => {

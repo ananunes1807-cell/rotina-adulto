@@ -37,6 +37,7 @@
   <div id="menuPainel" class="menu-painel" hidden>
     <button id="notifBtn" class="item-menu">Ativar notificações neste aparelho</button>
     <button id="novaTarefaBtn" class="item-menu">+ Nova tarefa</button>
+    <button id="diaAnteriorBtn" class="item-menu">Marcar dia anterior</button>
     <button id="logoutBtn" class="item-menu item-menu-sair">Sair</button>
   </div>
 
@@ -73,7 +74,7 @@
 <!-- Formulário de nova tarefa -->
 <dialog id="tarefaDialog" class="dialogo">
   <form id="tarefaForm" method="dialog" class="form-tarefa">
-    <h2>Nova tarefa</h2>
+    <h2 id="tarefaDialogTitulo">Nova tarefa</h2>
     <label>
       Nome
       <input type="text" id="campoNome" required maxlength="60" placeholder="Ex: escovar os dentes">
@@ -109,6 +110,20 @@
       <button type="submit" class="botao botao-primario">Salvar</button>
     </div>
   </form>
+</dialog>
+
+<!-- Marcar tarefas de um dia anterior -->
+<dialog id="diaAnteriorDialog" class="dialogo">
+  <h2>Marcar dia anterior</h2>
+  <label>
+    Data
+    <input type="date" id="campoDataAnterior">
+  </label>
+  <ul id="listaDiaAnterior" class="lista-tarefas dia-anterior-lista"></ul>
+  <p id="diaAnteriorVazio" class="texto-status" hidden>Nenhuma tarefa nesse dia.</p>
+  <div class="form-acoes">
+    <button type="button" id="fecharDiaAnterior" class="botao botao-secundario">Fechar</button>
+  </div>
 </dialog>
 
 <!-- Chat de apoio por tarefa -->
