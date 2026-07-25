@@ -89,6 +89,7 @@ h1,h2{ font-family:'Fraunces', serif; font-weight:600; margin:0; }
   background:#fff; border-radius:var(--raio); box-shadow:var(--sombra);
   display:flex; flex-direction:column; min-width:220px; overflow:hidden;
 }
+.menu-painel[hidden]{ display:none; }
 .item-menu{
   background:none; border:none; text-align:left; padding:14px 16px;
   font-family:'Inter'; font-size:.9rem; cursor:pointer; color:var(--carvao);
