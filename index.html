@@ -11,7 +11,7 @@
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link href="https://fonts.googleapis.com/css2?family=Fraunces:opsz,wght@9..144,500;9..144,600&family=Inter:wght@400;500;600;700&family=IBM+Plex+Mono:wght@500&display=swap" rel="stylesheet">
-<link rel="stylesheet" href="./styles.css?v=3">
+<link rel="stylesheet" href="./styles.css?v=4">
 </head>
 <body>
 
@@ -68,15 +68,17 @@
     <button id="listaVaziaBtn" class="botao botao-primario">Criar a primeira tarefa</button>
   </section>
 
-  <section id="secaoDiarias" class="lista-wrap" hidden>
-    <p class="lista-titulo">Tarefas diárias</p>
-    <ul id="listaDiarias" class="lista-tarefas"></ul>
-  </section>
+  <div class="listas-grade">
+    <section id="secaoDiarias" class="lista-wrap" hidden>
+      <p class="lista-titulo">Tarefas diárias</p>
+      <ul id="listaDiarias" class="lista-tarefas"></ul>
+    </section>
 
-  <section id="secaoSemanais" class="lista-wrap" hidden>
-    <p class="lista-titulo">Tarefas semanais</p>
-    <ul id="listaSemanais" class="lista-tarefas"></ul>
-  </section>
+    <section id="secaoSemanais" class="lista-wrap" hidden>
+      <p class="lista-titulo">Tarefas semanais</p>
+      <ul id="listaSemanais" class="lista-tarefas"></ul>
+    </section>
+  </div>
 
   <section class="mes-wrap">
     <p class="lista-titulo">Este mês: tarefas e conquistas</p>

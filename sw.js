@@ -1,7 +1,7 @@
-const CACHE_NAME = 'rotina-adulto-v2';
+const CACHE_NAME = 'rotina-adulto-v3';
 const FILES = [
   './index.html',
-  './styles.css?v=3',
+  './styles.css?v=4',
   './app.js',
   './manifest.webmanifest',
   './icon-192.png',
@@ -23,7 +23,10 @@ self.addEventListener('activate', event => {
 self.addEventListener('fetch', event => {
   if (event.request.method !== 'GET') return;
   event.respondWith(
-    fetch(event.request)
+    // 'no-store' força ignorar o cache HTTP do navegador — sem isso, o
+    // fetch() abaixo podia devolver uma resposta antiga mesmo com o app
+    // publicado de novo, dando a impressão de que o deploy não "pegou".
+    fetch(event.request, { cache: 'no-store' })
       .then(response => {
         const copia = response.clone();
         caches.open(CACHE_NAME).then(cache => cache.put(event.request, copia));
