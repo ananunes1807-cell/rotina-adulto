@@ -24,6 +24,29 @@
   font-size: 16px;
 }
 
+:root[data-tema="escuro"]{
+  --stone: #1E1D1C;
+  --stone-alto: #2B2A28;
+  --carvao: #EDEAE3;
+  --carvao-suave: #A9A59C;
+  --sage: #6B8A5C;
+  --sage-claro: #8FAE7E;
+  --sage-fundo: #2E3B29;
+  --argila: #C99172;
+  --linha: #43423F;
+  --cat-higiene: #3FCEC0;
+  --cat-higiene-fundo: #133733;
+  --cat-casa: #E88A5E;
+  --cat-casa-fundo: #3D2417;
+  --cat-trabalho: #7C89E0;
+  --cat-trabalho-fundo: #262B4D;
+  --cat-saude: #E3819C;
+  --cat-saude-fundo: #3D2430;
+  --cat-outro: #D9A93D;
+  --cat-outro-fundo: #3A2E14;
+  --sombra: 0 8px 24px -12px rgba(0,0,0,0.5);
+}
+
 *{ box-sizing: border-box; }
 html,body{ height:100%; }
 body{
@@ -32,6 +55,7 @@ body{
   color: var(--carvao);
   font-family: 'Inter', system-ui, sans-serif;
   -webkit-font-smoothing: antialiased;
+  transition: background-color .2s ease, color .2s ease;
 }
 
 h1,h2{ font-family:'Fraunces', serif; font-weight:600; margin:0; }
@@ -83,10 +107,16 @@ h1,h2{ font-family:'Fraunces', serif; font-weight:600; margin:0; }
 }
 .topo-saudacao{ font-family:'Fraunces', serif; font-size:1.6rem; margin:0; }
 .topo-data{ margin:2px 0 0; color:var(--carvao-suave); font-size:.9rem; text-transform:capitalize; }
+.topo-acoes{ display:flex; align-items:center; gap:2px; }
+
+.menu-email{
+  margin:0; padding:12px 16px; font-size:.78rem; color:var(--carvao-suave);
+  border-bottom:1px solid var(--linha); word-break:break-all;
+}
 
 .menu-painel{
   position:absolute; top:60px; right:16px; z-index:20;
-  background:#fff; border-radius:var(--raio); box-shadow:var(--sombra);
+  background:var(--stone-alto); border-radius:var(--raio); box-shadow:var(--sombra);
   display:flex; flex-direction:column; min-width:220px; overflow:hidden;
 }
 .menu-painel[hidden]{ display:none; }
@@ -190,11 +220,37 @@ h1,h2{ font-family:'Fraunces', serif; font-weight:600; margin:0; }
 .vazio{ text-align:center; padding:40px 20px; color:var(--carvao-suave); }
 .vazio .botao{ max-width:260px; margin:16px auto 0; }
 
+/* ---------- Mês: calendário e conquistas ---------- */
+.mes-wrap{ padding: 0 20px 100px; }
+.mes-calendario{
+  display:grid; grid-template-columns:repeat(7,1fr); gap:6px;
+  background:var(--stone-alto); border-radius:var(--raio); padding:14px;
+}
+.mes-dia{
+  aspect-ratio:1; display:flex; align-items:center; justify-content:center;
+  border-radius:8px; font-size:.75rem; font-family:'IBM Plex Mono', monospace;
+  color:var(--carvao-suave); background:var(--stone);
+}
+.mes-dia-vazio{ background:transparent; }
+.mes-dia.sem-tarefa{ color:var(--linha); }
+.mes-dia.completo{ background:var(--sage); color:#fff; font-weight:600; }
+.mes-dia.incompleto{ background:var(--sage-fundo); color:var(--carvao-suave); }
+.mes-dia.hoje{ box-shadow:0 0 0 2px var(--argila) inset; font-weight:700; }
+.mes-conquistas{ display:flex; flex-wrap:wrap; gap:8px; margin-top:14px; }
+.conquista-badge{
+  display:inline-flex; align-items:center; gap:6px;
+  background:var(--sage-fundo); color:var(--sage); font-weight:600;
+  font-size:.78rem; padding:8px 14px; border-radius:999px;
+}
+.conquista-icone{ font-size:.95rem; }
+.mes-vazio{ font-size:.85rem; color:var(--carvao-suave); margin:14px 0 0; }
+
 /* ---------- Diálogos ---------- */
 .dialogo{
   border:none; border-radius: var(--raio-grande); padding:24px;
   max-width:420px; width:90vw; box-shadow: var(--sombra);
   font-family:'Inter', sans-serif;
+  background: var(--stone-alto); color: var(--carvao);
 }
 .dialogo::backdrop{ background: rgba(43,42,40,.45); }
 .dialogo label{ display:block; margin-top:16px; font-size:.85rem; color:var(--carvao-suave); font-weight:600; }

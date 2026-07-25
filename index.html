@@ -31,10 +31,14 @@
       <p class="topo-saudacao" id="saudacao">Olá</p>
       <p class="topo-data" id="dataHoje"></p>
     </div>
-    <button id="menuBtn" class="botao-icone" aria-label="Menu" aria-expanded="false">⋯</button>
+    <div class="topo-acoes">
+      <button id="temaBtn" class="botao-icone" aria-label="Alternar tema claro/escuro">☀️</button>
+      <button id="menuBtn" class="botao-icone" aria-label="Menu" aria-expanded="false">⋯</button>
+    </div>
   </header>
 
   <div id="menuPainel" class="menu-painel" hidden>
+    <p id="menuEmail" class="menu-email"></p>
     <button id="notifBtn" class="item-menu">Ativar notificações neste aparelho</button>
     <button id="novaTarefaBtn" class="item-menu">+ Nova tarefa</button>
     <button id="diaAnteriorBtn" class="item-menu">Marcar dia anterior</button>
@@ -64,9 +68,20 @@
     <button id="listaVaziaBtn" class="botao botao-primario">Criar a primeira tarefa</button>
   </section>
 
-  <section class="lista-wrap">
-    <p class="lista-titulo">O dia inteiro</p>
-    <ul id="listaTarefas" class="lista-tarefas"></ul>
+  <section id="secaoDiarias" class="lista-wrap" hidden>
+    <p class="lista-titulo">Tarefas diárias</p>
+    <ul id="listaDiarias" class="lista-tarefas"></ul>
+  </section>
+
+  <section id="secaoSemanais" class="lista-wrap" hidden>
+    <p class="lista-titulo">Tarefas semanais</p>
+    <ul id="listaSemanais" class="lista-tarefas"></ul>
+  </section>
+
+  <section class="mes-wrap">
+    <p class="lista-titulo">Este mês: tarefas e conquistas</p>
+    <div id="mesCalendario" class="mes-calendario"></div>
+    <div id="mesConquistas" class="mes-conquistas"></div>
   </section>
 
 </div>

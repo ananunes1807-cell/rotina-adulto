@@ -35,6 +35,19 @@ let uid = null;
 let dadosUsuario = null; // documento inteiro em memória
 let tarefaAtualChat = null;
 
+// ---------- Tema claro/escuro ----------
+function aplicarTema(tema) {
+  document.documentElement.setAttribute('data-tema', tema);
+  $('temaBtn').textContent = tema === 'escuro' ? '🌙' : '☀️';
+}
+const temaSalvo = localStorage.getItem('tema');
+aplicarTema(temaSalvo || (window.matchMedia('(prefers-color-scheme: dark)').matches ? 'escuro' : 'claro'));
+$('temaBtn').addEventListener('click', () => {
+  const novo = document.documentElement.getAttribute('data-tema') === 'escuro' ? 'claro' : 'escuro';
+  localStorage.setItem('tema', novo);
+  aplicarTema(novo);
+});
+
 // ---------- Login ----------
 $('loginBtn').addEventListener('click', async () => {
   const provider = new GoogleAuthProvider();
@@ -60,6 +73,7 @@ onAuthStateChanged(auth, async user => {
   $('loginScreen').hidden = true;
   $('appScreen').hidden = false;
   $('saudacao').textContent = `Olá, ${user.displayName?.split(' ')[0] || ''}`;
+  $('menuEmail').textContent = user.email || '';
 
   await garantirDocumento(user);
   escutarDados();
@@ -119,8 +133,14 @@ function renderizarTudo() {
   $('listaVazia').hidden = tarefas.length > 0;
   renderizarTrilha(tarefas);
   renderizarAgora(tarefas);
-  renderizarLista(tarefas);
+  const diarias = tarefas.filter(t => !t.dias || t.dias.length === 0 || t.dias.length === 7);
+  const semanais = tarefas.filter(t => t.dias && t.dias.length > 0 && t.dias.length < 7);
+  $('secaoDiarias').hidden = diarias.length === 0;
+  $('secaoSemanais').hidden = semanais.length === 0;
+  renderizarListaEm('listaDiarias', diarias);
+  renderizarListaEm('listaSemanais', semanais);
   if ($('diaAnteriorDialog').open) renderizarDiaAnterior();
+  renderizarMes();
 }
 
 function proximaTarefa(tarefas) {
@@ -166,8 +186,8 @@ function renderizarAgora(tarefas) {
   $('agoraChat').onclick = () => abrirChat(atual);
 }
 
-function renderizarLista(tarefas) {
-  const ul = $('listaTarefas');
+function renderizarListaEm(ulId, tarefas) {
+  const ul = $(ulId);
   ul.innerHTML = '';
   tarefas.forEach(t => {
     const feita = estaConcluida(t.id);
@@ -192,6 +212,65 @@ function renderizarLista(tarefas) {
     li.querySelector('.tarefa-editar').addEventListener('click', () => abrirFormEdicaoTarefa(t));
     li.querySelector('.tarefa-excluir').addEventListener('click', () => excluirTarefa(t.id));
     ul.appendChild(li);
+  });
+}
+
+// ---------- Mês: calendário e conquistas ----------
+function diaCompleto(dataStr) {
+  const tarefasDoDiaAlvo = tarefasDoDia(dataStr);
+  if (tarefasDoDiaAlvo.length === 0) return null;
+  const feitas = (dadosUsuario.concluidas || {})[dataStr] || [];
+  return tarefasDoDiaAlvo.every(t => feitas.includes(t.id));
+}
+
+function renderizarMes() {
+  const hoje = new Date();
+  const ano = hoje.getFullYear(), mes = hoje.getMonth();
+  const primeiroDia = new Date(ano, mes, 1);
+  const diasNoMes = new Date(ano, mes + 1, 0).getDate();
+  const el = $('mesCalendario');
+  el.innerHTML = '';
+  for (let i = 0; i < primeiroDia.getDay(); i++) {
+    const vazio = document.createElement('span');
+    vazio.className = 'mes-dia mes-dia-vazio';
+    el.appendChild(vazio);
+  }
+  let streakAtual = 0, maiorStreak = 0, diasCompletos = 0, diasComTarefa = 0;
+  for (let d = 1; d <= diasNoMes; d++) {
+    const dataObj = new Date(ano, mes, d);
+    const dataStr = dataISO(dataObj);
+    const completo = dataObj <= hoje ? diaCompleto(dataStr) : null;
+    const span = document.createElement('span');
+    span.className = 'mes-dia' + (completo === true ? ' completo' : completo === false ? ' incompleto' : ' sem-tarefa');
+    if (dataStr === hojeISO()) span.classList.add('hoje');
+    span.textContent = d;
+    el.appendChild(span);
+    if (dataObj <= hoje) {
+      if (completo !== null) diasComTarefa++;
+      if (completo === true) { diasCompletos++; streakAtual++; maiorStreak = Math.max(maiorStreak, streakAtual); }
+      else if (completo === false) { streakAtual = 0; }
+    }
+  }
+  renderizarConquistas(maiorStreak, diasCompletos, diasComTarefa);
+}
+
+function renderizarConquistas(maiorStreak, diasCompletos, diasComTarefa) {
+  const conquistas = [];
+  if (diasCompletos >= 1) conquistas.push({ icone: '🎯', nome: 'Primeiro dia completo' });
+  if (maiorStreak >= 3) conquistas.push({ icone: '🔥', nome: 'Sequência de 3 dias' });
+  if (maiorStreak >= 7) conquistas.push({ icone: '🔥', nome: 'Sequência de 7 dias' });
+  if (diasComTarefa > 0 && diasCompletos === diasComTarefa) conquistas.push({ icone: '🌟', nome: 'Mês perfeito até agora' });
+  const el = $('mesConquistas');
+  el.innerHTML = '';
+  if (conquistas.length === 0) {
+    el.innerHTML = '<p class="mes-vazio">Ainda sem conquistas este mês — comece marcando suas tarefas!</p>';
+    return;
+  }
+  conquistas.forEach(c => {
+    const badge = document.createElement('span');
+    badge.className = 'conquista-badge';
+    badge.innerHTML = `<span class="conquista-icone">${c.icone}</span> ${c.nome}`;
+    el.appendChild(badge);
   });
 }
 
