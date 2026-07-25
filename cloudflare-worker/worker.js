@@ -249,6 +249,12 @@ async function responderChat(request, env) {
   });
 
   const data = await resp.json();
+  if (!resp.ok) {
+    console.error('Erro da API da Anthropic:', resp.status, JSON.stringify(data));
+    return new Response(JSON.stringify({ resposta: `Erro da IA (${resp.status}): ${data.error?.message || 'desconhecido'}` }), {
+      headers: { 'Content-Type': 'application/json', ...corsHeaders() }
+    });
+  }
   const texto = data.content?.find(b => b.type === 'text')?.text || 'Não consegui pensar em uma resposta agora.';
   return new Response(JSON.stringify({ resposta: texto }), {
     headers: { 'Content-Type': 'application/json', ...corsHeaders() }

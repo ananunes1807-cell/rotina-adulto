@@ -159,6 +159,7 @@ function renderizarAgora(tarefas) {
   const atual = proximaTarefa(tarefas);
   $('agoraCard').hidden = !atual;
   if (!atual) return;
+  $('agoraCard').className = 'agora-card categoria-' + atual.categoria;
   $('agoraNome').textContent = atual.nome;
   $('agoraHorario').textContent = atual.horario;
   $('agoraConcluir').onclick = () => marcarConcluida(atual.id, true);
@@ -171,7 +172,7 @@ function renderizarLista(tarefas) {
   tarefas.forEach(t => {
     const feita = estaConcluida(t.id);
     const li = document.createElement('li');
-    li.className = 'tarefa-item' + (feita ? ' concluida' : '');
+    li.className = 'tarefa-item categoria-' + t.categoria + (feita ? ' concluida' : '');
     li.innerHTML = `
       <button class="tarefa-check" aria-label="Marcar concluída">${feita ? '✓' : ''}</button>
       <div class="tarefa-info">

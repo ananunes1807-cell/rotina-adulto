@@ -8,6 +8,16 @@
   --sage-fundo: #E3E8DC;
   --argila: #A6785F;
   --linha: #DAD5C9;
+  --cat-higiene: #157A72;
+  --cat-higiene-fundo: #D9F0EE;
+  --cat-casa: #C2542A;
+  --cat-casa-fundo: #FBE3D6;
+  --cat-trabalho: #3F4FB8;
+  --cat-trabalho-fundo: #E2E5F7;
+  --cat-saude: #B84362;
+  --cat-saude-fundo: #F8DEE5;
+  --cat-outro: #A47417;
+  --cat-outro-fundo: #F3E7D0;
   --raio: 14px;
   --raio-grande: 22px;
   --sombra: 0 8px 24px -12px rgba(43,42,40,0.18);
@@ -123,7 +133,13 @@ h1,h2{ font-family:'Fraunces', serif; font-weight:600; margin:0; }
   margin: 14px 20px 0; padding:22px;
   background: var(--sage); color:#fff;
   border-radius: var(--raio-grande); box-shadow: var(--sombra);
+  transition: background-color .2s ease;
 }
+.agora-card.categoria-higiene{ background: var(--cat-higiene); }
+.agora-card.categoria-casa{ background: var(--cat-casa); }
+.agora-card.categoria-trabalho{ background: var(--cat-trabalho); }
+.agora-card.categoria-saude{ background: var(--cat-saude); }
+.agora-card.categoria-outro{ background: var(--cat-outro); }
 .agora-etiqueta{ margin:0; font-size:.75rem; text-transform:uppercase; letter-spacing:.1em; opacity:.85; }
 .agora-nome{ color:#fff; font-size:1.6rem; margin:6px 0 2px; }
 .agora-horario{ font-family:'IBM Plex Mono', monospace; margin:0 0 18px; opacity:.9; }
@@ -145,6 +161,11 @@ h1,h2{ font-family:'Fraunces', serif; font-weight:600; margin:0; }
   display:flex; align-items:center; justify-content:center; font-size:.85rem; color:#fff;
 }
 .tarefa-item.concluida .tarefa-check{ background:var(--sage); border-color:var(--sage); }
+.tarefa-item.categoria-higiene.concluida .tarefa-check{ background:var(--cat-higiene); border-color:var(--cat-higiene); }
+.tarefa-item.categoria-casa.concluida .tarefa-check{ background:var(--cat-casa); border-color:var(--cat-casa); }
+.tarefa-item.categoria-trabalho.concluida .tarefa-check{ background:var(--cat-trabalho); border-color:var(--cat-trabalho); }
+.tarefa-item.categoria-saude.concluida .tarefa-check{ background:var(--cat-saude); border-color:var(--cat-saude); }
+.tarefa-item.categoria-outro.concluida .tarefa-check{ background:var(--cat-outro); border-color:var(--cat-outro); }
 .tarefa-info{ flex:1; min-width:0; }
 .tarefa-nome{ margin:0; font-weight:600; font-size:.95rem; }
 .tarefa-item.concluida .tarefa-nome{ text-decoration: line-through; }
@@ -153,6 +174,11 @@ h1,h2{ font-family:'Fraunces', serif; font-weight:600; margin:0; }
   font-size:.68rem; padding:3px 9px; border-radius:999px; background:var(--sage-fundo); color:var(--sage);
   text-transform:uppercase; letter-spacing:.04em; flex:0 0 auto;
 }
+.categoria-higiene .tarefa-categoria{ background:var(--cat-higiene-fundo); color:var(--cat-higiene); }
+.categoria-casa .tarefa-categoria{ background:var(--cat-casa-fundo); color:var(--cat-casa); }
+.categoria-trabalho .tarefa-categoria{ background:var(--cat-trabalho-fundo); color:var(--cat-trabalho); }
+.categoria-saude .tarefa-categoria{ background:var(--cat-saude-fundo); color:var(--cat-saude); }
+.categoria-outro .tarefa-categoria{ background:var(--cat-outro-fundo); color:var(--cat-outro); }
 .tarefa-acoes{ display:flex; gap:2px; flex:0 0 auto; }
 .tarefa-acao{
   background:none; border:none; font-size:.95rem; line-height:1;
