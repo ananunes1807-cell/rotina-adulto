@@ -22,22 +22,47 @@ Campos do documento:
     email: "seu-email@gmail.com",
     criadoEm: "2026-07-22T00:00:00.000Z"
   },
-  tarefas: [
+
+  // Todo item marcável do painel — tarefa, compromisso da agenda, item de
+  // "fazer depois", hábito ou item de autocuidado — vive nesta única lista,
+  // diferenciado pelo campo `tipo`. Evita duplicar a lógica de dias/horário
+  // e faz o mapa `concluidas` (abaixo) servir pra todos eles de uma vez.
+  itens: [
     {
       id: "uuid",
+      tipo: "tarefa",          // tarefa | compromisso | depois | habito | autocuidado
       nome: "Escovar os dentes",
-      categoria: "higiene",   // higiene | casa | trabalho | saude | outro
-      horario: "08:00",       // HH:mm, 24h
-      dias: [0,1,2,3,4,5,6],  // 0=domingo ... 6=sábado. [] = todo dia
+      categoria: "higiene",    // higiene | casa | trabalho | saude | outro — tarefa e depois
+      horario: "08:00",        // HH:mm — tarefa e compromisso
+      dias: [0,1,2,3,4,5,6],   // 0=domingo ... 6=sábado. [] = todo dia — tarefa e compromisso
+      local: "",                // texto livre, só compromisso
+      icone: "comprimido",      // comprimido | gota | tigela | lua | coracao — só autocuidado
+      prioridade: false,        // até 3 tarefas marcadas viram "Prioridades" do dia
       ativa: true,
       ordem: 1,
       criadoEm: "2026-07-22T00:00:00.000Z"
     }
   ],
+
   concluidas: {
-    // chave = "AAAA-MM-DD", valor = lista de ids de tarefas concluídas naquele dia
+    // chave = "AAAA-MM-DD", valor = lista de ids de itens concluídos naquele
+    // dia — vale pra tarefa, compromisso, hábito e autocuidado, todos juntos
     "2026-07-22": ["uuid-1", "uuid-2"]
   },
+
+  // Blocos do painel que guardam um valor por dia (chave "AAAA-MM-DD"):
+  foco:     { "2026-07-22": { texto: "Terminar a proposta", feito: false } },
+  mente:    { "2026-07-22": "texto livre de \"descarregar a mente\"" },
+  agua:     { "2026-07-22": 5 },                                    // copos de 0 a 8
+  refeicoes:{ "2026-07-22": { cafe:true, almoco:false, lanche:false, jantar:false } },
+  humor:    { "2026-07-22": { humor:"calma", energia:"media" } },   // humor: calma|ok|agitada|cansada · energia: baixa|media|alta
+  conquistasManuais: { "2026-07-22": [{ id: "uuid", texto: "Consegui sair da cama antes do meio-dia" }] },
+
+  // "Não esquecer": lembretes avulsos, sem data — ficam até você apagar
+  lembretes: [
+    { id: "uuid", texto: "Levar guarda-chuva", criadoEm: "2026-07-22T00:00:00.000Z" }
+  ],
+
   pushTokens: [
     {
       token: "token-do-fcm-gerado-pelo-navegador",
@@ -46,20 +71,28 @@ Campos do documento:
     }
   ],
   notificadas: {
-    // controle interno do Cloudflare Worker: quais tarefas já foram
-    // notificadas hoje, pra não mandar de novo a cada vez que o cron roda
+    // controle interno do Cloudflare Worker: quais itens já foram
+    // notificados hoje, pra não mandar de novo a cada vez que o cron roda
     "2026-07-22": ["uuid-1"]
   }
 }
 ```
 
-### Por que `concluidas` é um mapa por data, e não um campo dentro da tarefa
+> Documentos criados antes dessa versão tinham um campo `tarefas` (sem
+> `tipo`). O app migra sozinho no primeiro carregamento: copia cada tarefa
+> antiga pra `itens` com `tipo: "tarefa"` e remove o campo velho. Não precisa
+> fazer nada manualmente.
 
-Porque a tarefa é recorrente (repete todo dia). Se "feito" fosse um campo
-dentro da tarefa, ela ficaria marcada como feita pra sempre depois do primeiro
-check. Guardando por data, o checklist reseta sozinho todo dia — você vê o
-histórico completo (quantos dias seguidos escovou os dentes, por exemplo) sem
-duplicar dados.
+### Por que `concluidas` é um mapa por data, e não um campo dentro do item
+
+Porque tarefas, compromissos, hábitos e itens de autocuidado são recorrentes
+(repetem todo dia). Se "feito" fosse um campo dentro do item, ele ficaria
+marcado como feito pra sempre depois do primeiro check. Guardando por data, o
+checklist reseta sozinho todo dia — você vê o histórico completo (quantos
+dias seguidos tomou a medicação, por exemplo) sem duplicar dados. Os outros
+blocos diários (`foco`, `mente`, `agua`, `refeicoes`, `humor`,
+`conquistasManuais`) seguem a mesma ideia, cada um com seu próprio mapa por
+data.
 
 ### Por que `pushTokens` é uma lista
 

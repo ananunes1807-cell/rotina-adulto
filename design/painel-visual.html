@@ -1,0 +1,907 @@
+<style>
+  :root{
+    --creme: #FBF7F2;
+    --superficie: #FFFDF9;
+    --tinta: #363150;
+    --tinta-suave: #6B6580;
+    --linha: #EAE2F0;
+    --anel: #D8CCE8;
+    --sombra: 0 14px 34px -22px rgba(72,54,96,.30), 0 2px 8px -4px rgba(72,54,96,.14);
+
+    --rosa-fundo: #F8DCE6;   --rosa-tinta: #A8355F;
+    --lilas-fundo: #E7DEF8;  --lilas-tinta: #6A4AA0;
+    --ceu-fundo:  #DBEDF8;   --ceu-tinta:  #22708F;
+    --menta-fundo:#DCF2E4;   --menta-tinta:#237A58;
+    --pessego-fundo:#FBE3D0; --pessego-tinta:#B25E28;
+    --areia-fundo: #EFE9DE;  --areia-tinta: #7A6E52;
+    --dourado-fundo:#F7EAC4; --dourado-tinta:#93701A;
+
+    --raio-xl: 22px;
+    --raio-lg: 18px;
+    --raio-md: 13px;
+    --raio-pill: 999px;
+    --fonte-titulo: ui-rounded, "SF Pro Rounded", "Segoe UI Rounded", "Nunito", "Segoe UI", system-ui, sans-serif;
+    --fonte-corpo: "Segoe UI", ui-sans-serif, system-ui, -apple-system, "Helvetica Neue", Arial, sans-serif;
+    color-scheme: light;
+  }
+
+  @media (prefers-color-scheme: dark){
+    :root{
+      --creme: #191D2C; --superficie: #212639; --tinta: #E9E6F3; --tinta-suave: #A6A1C4;
+      --linha: #323A57; --anel: #4A4E74;
+      --sombra: 0 16px 36px -20px rgba(0,0,0,.55);
+      --rosa-fundo:#3A2534;   --rosa-tinta:#F1A9C6;
+      --lilas-fundo:#2C2A49;  --lilas-tinta:#C7B2F5;
+      --ceu-fundo:#1E3244;    --ceu-tinta:#9AD1F0;
+      --menta-fundo:#1D3630;  --menta-tinta:#8FE3BC;
+      --pessego-fundo:#3A2A21; --pessego-tinta:#F0BA8B;
+      --areia-fundo:#2B2A34;  --areia-tinta:#C9C2AE;
+      --dourado-fundo:#3A311B; --dourado-tinta:#F0D77E;
+      color-scheme: dark;
+    }
+  }
+  :root[data-theme="dark"]{
+    --creme: #191D2C; --superficie: #212639; --tinta: #E9E6F3; --tinta-suave: #A6A1C4;
+    --linha: #323A57; --anel: #4A4E74;
+    --sombra: 0 16px 36px -20px rgba(0,0,0,.55);
+    --rosa-fundo:#3A2534;   --rosa-tinta:#F1A9C6;
+    --lilas-fundo:#2C2A49;  --lilas-tinta:#C7B2F5;
+    --ceu-fundo:#1E3244;    --ceu-tinta:#9AD1F0;
+    --menta-fundo:#1D3630;  --menta-tinta:#8FE3BC;
+    --pessego-fundo:#3A2A21; --pessego-tinta:#F0BA8B;
+    --areia-fundo:#2B2A34;  --areia-tinta:#C9C2AE;
+    --dourado-fundo:#3A311B; --dourado-tinta:#F0D77E;
+    color-scheme: dark;
+  }
+  :root[data-theme="light"]{
+    --creme: #FBF7F2; --superficie: #FFFDF9; --tinta: #363150; --tinta-suave: #6B6580;
+    --linha: #EAE2F0; --anel: #D8CCE8;
+    --sombra: 0 14px 34px -22px rgba(72,54,96,.30), 0 2px 8px -4px rgba(72,54,96,.14);
+    --rosa-fundo: #F8DCE6;   --rosa-tinta: #A8355F;
+    --lilas-fundo: #E7DEF8;  --lilas-tinta: #6A4AA0;
+    --ceu-fundo:  #DBEDF8;   --ceu-tinta:  #22708F;
+    --menta-fundo:#DCF2E4;   --menta-tinta:#237A58;
+    --pessego-fundo:#FBE3D0; --pessego-tinta:#B25E28;
+    --areia-fundo: #EFE9DE;  --areia-tinta: #7A6E52;
+    --dourado-fundo:#F7EAC4; --dourado-tinta:#93701A;
+    color-scheme: light;
+  }
+
+  *{ box-sizing:border-box; }
+  .app{
+    font-family: var(--fonte-corpo);
+    background: var(--creme);
+    color: var(--tinta);
+    min-height:100dvh;
+    padding-bottom: 92px;
+    -webkit-font-smoothing:antialiased;
+  }
+  .app *{ font-variant-numeric: tabular-nums; }
+  .app h1,.app h2,.app h3{ font-family: var(--fonte-titulo); margin:0; }
+  .app button{ font-family:inherit; cursor:pointer; }
+  .app :focus-visible{ outline:2.5px solid var(--lilas-tinta); outline-offset:2px; border-radius:8px; }
+
+  @media (prefers-reduced-motion: reduce){
+    .app *{ animation-duration:.001ms !important; animation-iteration-count:1 !important; transition-duration:.001ms !important; }
+  }
+
+  /* ---------- Cabeçalho ---------- */
+  .cabecalho{
+    display:flex; flex-wrap:wrap; align-items:center; justify-content:space-between;
+    gap:16px; padding:20px clamp(16px,4vw,32px) 14px;
+    max-width:1240px; margin:0 auto;
+  }
+  .cab-marca{ display:flex; align-items:center; gap:8px; margin-bottom:2px; }
+  .cab-marca svg{ width:20px; height:20px; color:var(--lilas-tinta); }
+  .cab-marca span{ font-family:var(--fonte-titulo); font-weight:700; font-size:.82rem; letter-spacing:.03em; color:var(--tinta-suave); text-transform:uppercase; }
+  .cab-saudacao{ font-size:1.5rem; font-weight:700; text-wrap:balance; }
+  .cab-data{ margin:3px 0 0; color:var(--tinta-suave); font-size:.9rem; text-transform:capitalize; }
+
+  .cab-widgets{ display:flex; align-items:center; gap:10px; }
+  .cab-item{
+    background:var(--superficie); border:1px solid var(--linha); border-radius:var(--raio-lg);
+    box-shadow:var(--sombra); padding:8px 10px;
+  }
+  .progresso-anel{ display:flex; align-items:center; gap:10px; padding:8px 14px; }
+  .anel{
+    --pct: 0;
+    width:44px; height:44px; border-radius:50%; flex:0 0 auto;
+    background: conic-gradient(var(--lilas-tinta) calc(var(--pct)*1%), var(--linha) 0);
+    display:flex; align-items:center; justify-content:center;
+  }
+  .anel::after{ content:''; width:32px; height:32px; border-radius:50%; background:var(--superficie); }
+  .progresso-texto{ display:flex; flex-direction:column; line-height:1.15; }
+  .progresso-texto strong{ font-size:.95rem; }
+  .progresso-texto span{ font-size:.72rem; color:var(--tinta-suave); }
+
+  .tema-botao{
+    background:var(--superficie); border:1px solid var(--linha); border-radius:var(--raio-pill);
+    width:42px; height:42px; display:flex; align-items:center; justify-content:center;
+    box-shadow:var(--sombra); color:var(--tinta-suave); transition:transform .15s ease;
+  }
+  .tema-botao:active{ transform:scale(.92); }
+  .tema-botao svg{ width:19px; height:19px; }
+  .tema-botao .icone-lua{ display:none; }
+  :root[data-theme="dark"] .tema-botao .icone-sol{ display:none; }
+  :root[data-theme="dark"] .tema-botao .icone-lua{ display:block; }
+
+  .mini-cal{ padding:9px 11px 10px; }
+  .mini-cal-cab{ display:flex; align-items:center; justify-content:space-between; gap:6px; margin-bottom:6px; }
+  .mini-cal-cab span{ font-size:.72rem; font-weight:700; text-transform:capitalize; color:var(--tinta-suave); }
+  .mini-cal-grade{ display:grid; grid-template-columns:repeat(7,14px); gap:3px; }
+  .mini-cal-grade .dia{
+    width:14px; height:14px; border-radius:5px; font-size:.55rem; display:flex; align-items:center; justify-content:center;
+    color:var(--tinta-suave);
+  }
+  .mini-cal-grade .dia.hoje{ background:var(--lilas-tinta); color:#fff; font-weight:700; }
+  .mini-cal-grade .dia.tem-tarefa:not(.hoje){ box-shadow:inset 0 -2.5px 0 var(--ceu-tinta); }
+
+  /* ---------- Navegação por abas ---------- */
+  .abas{
+    max-width:1240px; margin:4px auto 6px; padding:0 clamp(16px,4vw,32px);
+    display:flex; gap:6px; overflow-x:auto;
+  }
+  .aba{
+    display:flex; align-items:center; gap:7px; background:transparent; border:1px solid transparent;
+    border-radius:var(--raio-pill); padding:9px 16px; color:var(--tinta-suave); font-weight:600; font-size:.85rem;
+    white-space:nowrap; transition:background .15s ease, color .15s ease;
+  }
+  .aba svg{ width:16px; height:16px; }
+  .aba:hover{ background:var(--superficie); }
+  .aba[aria-selected="true"]{ background:var(--lilas-fundo); color:var(--lilas-tinta); }
+
+  /* ---------- Painel em mural (bento) ---------- */
+  .vista{ max-width:1240px; margin:0 auto; padding:10px clamp(16px,4vw,32px) 30px; }
+  .vista[hidden]{ display:none; }
+  .painel{ columns: 4 250px; column-gap:16px; }
+  @media (min-width:1080px){ .painel{ columns:4; } }
+  @media (max-width:1079px) and (min-width:760px){ .painel{ columns:3; } }
+  @media (max-width:759px) and (min-width:560px){ .painel{ columns:2; } }
+  @media (max-width:559px){ .painel{ columns:1; } }
+
+  .bloco{
+    break-inside:avoid; margin:0 0 16px;
+    background:var(--cor-fundo, var(--superficie)); border:1px solid var(--linha);
+    border-radius:var(--raio-xl); padding:16px 16px 18px; box-shadow:var(--sombra);
+    position:relative;
+  }
+  .bloco[data-cor="rosa"]{ --cor-fundo:var(--rosa-fundo); --cor-tinta:var(--rosa-tinta); }
+  .bloco[data-cor="lilas"]{ --cor-fundo:var(--lilas-fundo); --cor-tinta:var(--lilas-tinta); }
+  .bloco[data-cor="ceu"]{ --cor-fundo:var(--ceu-fundo); --cor-tinta:var(--ceu-tinta); }
+  .bloco[data-cor="menta"]{ --cor-fundo:var(--menta-fundo); --cor-tinta:var(--menta-tinta); }
+  .bloco[data-cor="pessego"]{ --cor-fundo:var(--pessego-fundo); --cor-tinta:var(--pessego-tinta); }
+  .bloco[data-cor="areia"]{ --cor-fundo:var(--areia-fundo); --cor-tinta:var(--areia-tinta); }
+  .bloco[data-cor="dourado"]{ --cor-fundo:var(--dourado-fundo); --cor-tinta:var(--dourado-tinta); }
+
+  .bloco.arrastando{ opacity:.45; }
+  .bloco--foco{ background:linear-gradient(165deg, var(--pessego-fundo), var(--rosa-fundo)); }
+
+  .bloco-cab{ display:flex; align-items:center; justify-content:space-between; gap:8px; margin-bottom:12px; }
+  .bloco-titulo-grupo{ display:flex; align-items:center; gap:9px; min-width:0; }
+  .bloco-icone{
+    width:30px; height:30px; border-radius:50%; flex:0 0 auto;
+    background:rgba(255,255,255,.55); display:flex; align-items:center; justify-content:center;
+    color:var(--cor-tinta, var(--lilas-tinta));
+  }
+  :root[data-theme="dark"] .bloco-icone{ background:rgba(255,255,255,.08); }
+  .bloco-icone svg{ width:16px; height:16px; }
+  .bloco-titulo{ font-size:.94rem; font-weight:700; color:var(--cor-tinta, var(--tinta)); }
+  .bloco-sub{ margin:1px 0 0; font-size:.74rem; color:var(--tinta-suave); }
+
+  .arrastar-alca{
+    background:none; border:none; color:var(--tinta-suave); opacity:.55; width:26px; height:26px;
+    border-radius:8px; display:flex; align-items:center; justify-content:center; flex:0 0 auto; cursor:grab;
+  }
+  .arrastar-alca:hover{ opacity:1; background:rgba(255,255,255,.5); }
+  .arrastar-alca svg{ width:15px; height:15px; }
+
+  /* ---------- Foco de hoje ---------- */
+  .bloco--foco .bloco-titulo{ color:var(--pessego-tinta); }
+  .foco-meta{ font-size:1.2rem; font-weight:700; margin:2px 0 6px; line-height:1.3; text-wrap:balance; }
+  .foco-legenda{ margin:0 0 14px; color:var(--tinta-suave); font-size:.85rem; }
+  .foco-progresso{ height:8px; border-radius:99px; background:rgba(255,255,255,.55); overflow:hidden; margin-bottom:6px; }
+  .foco-progresso i{ display:block; height:100%; width:35%; border-radius:99px; background:var(--pessego-tinta); }
+  .foco-nota{ font-size:.74rem; color:var(--tinta-suave); }
+
+  /* ---------- Listas de tarefa (compartilhado) ---------- */
+  .lista-itens{ list-style:none; margin:0; padding:0; display:flex; flex-direction:column; gap:7px; }
+  .item{
+    display:flex; align-items:flex-start; gap:10px; background:var(--superficie);
+    border-radius:var(--raio-md); padding:9px 10px; border:1px solid rgba(255,255,255,.6);
+  }
+  :root[data-theme="dark"] .item{ border-color:rgba(255,255,255,.04); }
+  .marca-check{
+    position:relative; width:22px; height:22px; border-radius:7px; flex:0 0 auto; margin-top:1px;
+    border:1.8px solid var(--anel); background:transparent; display:flex; align-items:center; justify-content:center;
+    transition:background .15s ease, border-color .15s ease;
+  }
+  .marca-check svg{ width:12px; height:12px; color:#fff; opacity:0; transform:scale(.5); }
+  .item.feita .marca-check{ background:var(--cor-tinta, var(--lilas-tinta)); border-color:var(--cor-tinta, var(--lilas-tinta)); }
+  .item.feita .marca-check svg{ opacity:1; transform:scale(1); animation:marca .38s cubic-bezier(.34,1.56,.64,1); }
+  @keyframes marca{ from{ opacity:0; transform:scale(.3) rotate(-12deg); } to{ opacity:1; transform:scale(1) rotate(0); } }
+  .patinha{
+    position:absolute; top:-7px; right:-6px; width:15px; height:15px; color:var(--dourado-tinta);
+    opacity:0; transform:scale(.4) rotate(-15deg);
+  }
+  .item.feita .patinha{ opacity:1; transform:scale(1) rotate(0); animation:patinha .5s cubic-bezier(.34,1.56,.64,1); }
+  @keyframes patinha{ from{ opacity:0; transform:scale(.2) rotate(-30deg);} to{ opacity:1; transform:scale(1) rotate(0);} }
+
+  .item-corpo{ flex:1; min-width:0; }
+  .item-nome{ font-size:.88rem; font-weight:600; line-height:1.35; }
+  .item.feita .item-nome{ color:var(--tinta-suave); text-decoration:line-through; text-decoration-color:var(--anel); }
+  .item-meta{ display:flex; gap:6px; margin-top:3px; flex-wrap:wrap; }
+  .selo{ font-size:.66rem; font-weight:700; padding:2px 8px; border-radius:99px; letter-spacing:.02em; }
+  .selo-alta{ background:var(--rosa-fundo); color:var(--rosa-tinta); }
+  .selo-media{ background:var(--pessego-fundo); color:var(--pessego-tinta); }
+  .selo-baixa{ background:var(--menta-fundo); color:var(--menta-tinta); }
+  .item-hora{ font-size:.72rem; color:var(--tinta-suave); }
+
+  /* ---------- Agenda (linha do tempo) ---------- */
+  .linha-tempo{ list-style:none; margin:0; padding:0; }
+  .linha-tempo li{ display:flex; gap:12px; position:relative; padding-bottom:16px; }
+  .linha-tempo li:last-child{ padding-bottom:0; }
+  .lt-marcador{ display:flex; flex-direction:column; align-items:center; flex:0 0 auto; }
+  .lt-ponto{ width:9px; height:9px; border-radius:50%; background:var(--ceu-tinta); margin-top:4px; }
+  .lt-fio{ flex:1; width:1.5px; background:var(--linha); margin-top:3px; }
+  .linha-tempo li:last-child .lt-fio{ display:none; }
+  .lt-hora{ font-size:.72rem; color:var(--tinta-suave); width:40px; flex:0 0 auto; padding-top:1px; }
+  .lt-corpo{ padding-bottom:2px; }
+  .lt-titulo{ font-size:.86rem; font-weight:600; }
+  .lt-local{ font-size:.72rem; color:var(--tinta-suave); margin-top:1px; }
+
+  /* ---------- Fazer depois / Não esquecer (chips) ---------- */
+  .chips{ display:flex; flex-direction:column; gap:8px; }
+  .chip{
+    display:flex; align-items:center; gap:8px; background:var(--superficie); border-radius:var(--raio-md);
+    padding:9px 11px; font-size:.85rem; border:1px solid rgba(255,255,255,.6);
+  }
+  :root[data-theme="dark"] .chip{ border-color:rgba(255,255,255,.04); }
+  .chip svg{ width:14px; height:14px; color:var(--cor-tinta); flex:0 0 auto; }
+
+  /* ---------- Descarregar a mente ---------- */
+  .mente-area{
+    width:100%; min-height:110px; resize:none; border:1.5px dashed var(--anel); border-radius:var(--raio-md);
+    background:rgba(255,255,255,.5); padding:11px 12px; font-family:var(--fonte-corpo); font-size:.85rem;
+    color:var(--tinta); line-height:1.5;
+  }
+  :root[data-theme="dark"] .mente-area{ background:rgba(255,255,255,.03); }
+  .mente-area::placeholder{ color:var(--tinta-suave); }
+  .mente-area:focus{ outline:none; border-color:var(--lilas-tinta); border-style:solid; }
+  .mente-legenda{ font-size:.7rem; color:var(--tinta-suave); margin-top:7px; }
+
+  /* ---------- Autocuidado / grade de botões ---------- */
+  .grade-toques{ display:flex; flex-direction:column; gap:7px; }
+  .toque{
+    display:flex; align-items:center; gap:10px; width:100%; background:var(--superficie);
+    border:1px solid rgba(255,255,255,.6); border-radius:var(--raio-md); padding:9px 10px; text-align:left;
+    color:var(--tinta); font-size:.85rem; font-weight:600;
+  }
+  :root[data-theme="dark"] .toque{ border-color:rgba(255,255,255,.04); }
+  .toque svg{ width:16px; height:16px; color:var(--cor-tinta); flex:0 0 auto; }
+  .toque-marca{ margin-left:auto; width:20px; height:20px; border-radius:7px; border:1.8px solid var(--anel); position:relative; flex:0 0 auto; }
+  .toque-marca svg{ width:11px; height:11px; color:#fff; position:absolute; inset:0; margin:auto; opacity:0; transform:scale(.5); }
+  .toque.feita{ opacity:.6; }
+  .toque.feita .toque-marca{ background:var(--cor-tinta); border-color:var(--cor-tinta); }
+  .toque.feita .toque-marca svg{ opacity:1; transform:scale(1); }
+
+  /* ---------- Hábitos ---------- */
+  .habito{ display:flex; align-items:center; gap:10px; padding:6px 0; }
+  .habito-nome{ font-size:.82rem; font-weight:600; flex:1; min-width:0; }
+  .habito-dias{ display:flex; gap:4px; }
+  .habito-dia{ width:16px; height:16px; border-radius:5px; background:var(--linha); }
+  .habito-dia.feito{ background:var(--cor-tinta); }
+  .habito-dia.hoje-dia{ box-shadow:0 0 0 1.5px var(--cor-tinta); background:transparent; cursor:pointer; }
+  .habito-dia.hoje-dia.feito{ background:var(--cor-tinta); }
+
+  /* ---------- Água ---------- */
+  .agua-linha{ display:flex; gap:7px; flex-wrap:wrap; margin-bottom:8px; }
+  .gota{ background:none; border:none; width:26px; height:26px; color:var(--anel); padding:0; }
+  .gota svg{ width:100%; height:100%; }
+  .gota.cheia{ color:var(--ceu-tinta); }
+  .agua-texto{ font-size:.8rem; color:var(--tinta-suave); }
+  .agua-texto strong{ color:var(--tinta); }
+
+  /* ---------- Refeições ---------- */
+  .refeicoes{ display:grid; grid-template-columns:1fr 1fr; gap:8px; }
+  .refeicao{
+    display:flex; flex-direction:column; gap:6px; align-items:flex-start; background:var(--superficie);
+    border:1px solid rgba(255,255,255,.6); border-radius:var(--raio-md); padding:9px 10px;
+  }
+  :root[data-theme="dark"] .refeicao{ border-color:rgba(255,255,255,.04); }
+  .refeicao span{ font-size:.78rem; font-weight:600; }
+  .refeicao button{
+    font-size:.68rem; font-weight:700; padding:4px 10px; border-radius:99px; border:none;
+    background:var(--linha); color:var(--tinta-suave);
+  }
+  .refeicao button.marcada{ background:var(--cor-tinta); color:#fff; }
+
+  /* ---------- Humor e energia ---------- */
+  .escala-grupo{ margin-bottom:12px; }
+  .escala-rotulo{ font-size:.7rem; text-transform:uppercase; letter-spacing:.05em; color:var(--tinta-suave); margin:0 0 7px; }
+  .escala-opcoes{ display:flex; gap:6px; }
+  .escala-btn{
+    flex:1; display:flex; flex-direction:column; align-items:center; gap:4px; padding:8px 4px;
+    border-radius:var(--raio-md); border:1.5px solid var(--linha); background:var(--superficie); color:var(--tinta-suave);
+  }
+  .escala-btn svg{ width:16px; height:16px; }
+  .escala-btn span{ font-size:.64rem; font-weight:600; }
+  .escala-btn[aria-pressed="true"]{ border-color:var(--cor-tinta); background:var(--cor-fundo); color:var(--cor-tinta); }
+
+  /* ---------- Conquistas ---------- */
+  .medalhas{ display:flex; flex-wrap:wrap; gap:8px; }
+  .medalha{
+    display:flex; align-items:center; gap:6px; background:rgba(255,255,255,.6); color:var(--dourado-tinta);
+    font-size:.76rem; font-weight:700; padding:7px 12px; border-radius:99px;
+  }
+  :root[data-theme="dark"] .medalha{ background:rgba(255,255,255,.06); }
+  .medalha svg{ width:13px; height:13px; }
+  .vazio-gentil{ display:flex; align-items:center; gap:9px; color:var(--tinta-suave); font-size:.8rem; }
+  .vazio-gentil svg{ width:22px; height:22px; color:var(--cor-tinta); flex:0 0 auto; }
+
+  /* ---------- Navegação inferior (mobile) ---------- */
+  @media (max-width:759px){
+    .abas{ position:fixed; left:0; right:0; bottom:0; z-index:40; margin:0; max-width:none;
+      background:var(--superficie); border-top:1px solid var(--linha); padding:6px 6px calc(6px + env(safe-area-inset-bottom));
+      overflow:visible; box-shadow:0 -8px 24px -18px rgba(72,54,96,.35); }
+    .aba{ flex:1; flex-direction:column; gap:3px; padding:7px 2px; font-size:.62rem; }
+    .aba[aria-selected="true"]{ background:transparent; }
+    .aba svg{ width:19px; height:19px; }
+    .app{ padding-bottom:74px; }
+  }
+
+  /* ---------- Telas auxiliares (Rotina / Calendário / Progresso / Config) ---------- */
+  .tela-simples{ display:flex; flex-direction:column; gap:16px; }
+  .tela-cab{ display:flex; align-items:center; justify-content:space-between; }
+  .tela-titulo{ font-size:1.2rem; font-weight:700; }
+  .cartao-simples{ background:var(--superficie); border:1px solid var(--linha); border-radius:var(--raio-xl); box-shadow:var(--sombra); padding:16px 18px; }
+  .cal-grande{ display:grid; grid-template-columns:repeat(7,1fr); gap:6px; }
+  .cal-grande .dia{ aspect-ratio:1; display:flex; align-items:center; justify-content:center; border-radius:10px; font-size:.8rem; color:var(--tinta-suave); background:var(--creme); }
+  .cal-grande .dia.hoje{ background:var(--lilas-tinta); color:#fff; font-weight:700; }
+  .cal-grande .dia.tem-tarefa:not(.hoje){ box-shadow:inset 0 -3px 0 var(--ceu-tinta); }
+  .config-lista{ display:flex; flex-direction:column; }
+  .config-item{ display:flex; align-items:center; justify-content:space-between; gap:12px; padding:13px 0; border-bottom:1px solid var(--linha); }
+  .config-item:last-child{ border-bottom:none; }
+  .config-item-texto strong{ display:block; font-size:.88rem; }
+  .config-item-texto span{ font-size:.76rem; color:var(--tinta-suave); }
+  .interruptor{ width:42px; height:24px; border-radius:99px; background:var(--linha); position:relative; border:none; flex:0 0 auto; }
+  .interruptor::after{ content:''; position:absolute; top:3px; left:3px; width:18px; height:18px; border-radius:50%; background:#fff; box-shadow:var(--sombra); transition:transform .18s ease; }
+  .interruptor[aria-pressed="true"]{ background:var(--lilas-tinta); }
+  .interruptor[aria-pressed="true"]::after{ transform:translateX(18px); }
+</style>
+
+<svg style="display:none" aria-hidden="true">
+  <symbol id="i-gato" viewBox="0 0 20 20"><path d="M5 8 4 3l3.2 2.6a9 9 0 0 1 5.6 0L16 3l-1 5" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"/><circle cx="10" cy="11" r="6" fill="none" stroke="currentColor" stroke-width="1.5"/><path d="M8 12c.5.6 1.5.6 2 0M13.2 9.3l.1.1M6.7 9.3l-.1.1" stroke="currentColor" stroke-width="1.4" stroke-linecap="round"/></symbol>
+  <symbol id="i-sol" viewBox="0 0 20 20"><circle cx="10" cy="10" r="3.6" fill="none" stroke="currentColor" stroke-width="1.5"/><g stroke="currentColor" stroke-width="1.5" stroke-linecap="round"><path d="M10 2.5v2M10 15.5v2M17.5 10h-2M4.5 10h-2M15.3 4.7l-1.4 1.4M6.1 13.9l-1.4 1.4M15.3 15.3l-1.4-1.4M6.1 6.1 4.7 4.7"/></g></symbol>
+  <symbol id="i-lua" viewBox="0 0 20 20"><path d="M16 12.5A6.5 6.5 0 0 1 7.5 4 6.5 6.5 0 1 0 16 12.5Z" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linejoin="round"/></symbol>
+  <symbol id="i-alvo" viewBox="0 0 20 20"><circle cx="10" cy="10" r="7" fill="none" stroke="currentColor" stroke-width="1.4"/><circle cx="10" cy="10" r="4" fill="none" stroke="currentColor" stroke-width="1.4"/><circle cx="10" cy="10" r="1.2" fill="currentColor"/></symbol>
+  <symbol id="i-bandeira" viewBox="0 0 20 20"><path d="M5 17V3M5 3.5h9l-2.3 3L14 9.5H5" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linejoin="round" stroke-linecap="round"/></symbol>
+  <symbol id="i-relogio" viewBox="0 0 20 20"><circle cx="10" cy="10.5" r="7" fill="none" stroke="currentColor" stroke-width="1.4"/><path d="M10 6.5V11l3 1.8" fill="none" stroke="currentColor" stroke-width="1.4" stroke-linecap="round" stroke-linejoin="round"/><path d="M7.5 2.5h5" stroke="currentColor" stroke-width="1.4" stroke-linecap="round"/></symbol>
+  <symbol id="i-lista" viewBox="0 0 20 20"><g stroke="currentColor" stroke-width="1.5" stroke-linecap="round"><rect x="3.2" y="4" width="3" height="3" rx="1" fill="none"/><path d="M8.5 5.5h8.3"/><rect x="3.2" y="12" width="3" height="3" rx="1" fill="none"/><path d="M8.5 13.5h8.3"/></g></symbol>
+  <symbol id="i-bandeja" viewBox="0 0 20 20"><path d="M3 8 5 3h10l2 5M3 8v7.5a1 1 0 0 0 1 1h12a1 1 0 0 0 1-1V8M3 8h14M7.5 11h5" fill="none" stroke="currentColor" stroke-width="1.4" stroke-linecap="round" stroke-linejoin="round"/></symbol>
+  <symbol id="i-nuvem" viewBox="0 0 20 20"><path d="M6.2 14.5a3.4 3.4 0 0 1-.4-6.8 4.3 4.3 0 0 1 8.3-1.4 3.3 3.3 0 0 1-.4 8.2H6.2Z" fill="none" stroke="currentColor" stroke-width="1.4" stroke-linejoin="round"/></symbol>
+  <symbol id="i-coracao" viewBox="0 0 20 20"><path d="M10 16.3s-6.2-3.8-6.2-8.2a3.6 3.6 0 0 1 6.2-2.5 3.6 3.6 0 0 1 6.2 2.5c0 4.4-6.2 8.2-6.2 8.2Z" fill="none" stroke="currentColor" stroke-width="1.4" stroke-linejoin="round"/></symbol>
+  <symbol id="i-repetir" viewBox="0 0 20 20"><path d="M15.5 6.5A6 6 0 0 0 5 9M4.5 13.5A6 6 0 0 0 15 11" fill="none" stroke="currentColor" stroke-width="1.4" stroke-linecap="round"/><path d="M15.5 3v3.5H12M4.5 17v-3.5H8" fill="none" stroke="currentColor" stroke-width="1.4" stroke-linecap="round" stroke-linejoin="round"/></symbol>
+  <symbol id="i-gota" viewBox="0 0 20 20"><path d="M10 2.8s5 6 5 9.6a5 5 0 0 1-10 0c0-3.6 5-9.6 5-9.6Z" fill="currentColor" stroke="none"/></symbol>
+  <symbol id="i-tigela" viewBox="0 0 20 20"><path d="M3 9.5h14a7 4.5 0 0 1-14 0Z" fill="none" stroke="currentColor" stroke-width="1.4" stroke-linejoin="round"/><path d="M6 9V6.3M10 8V4.5M14 9V6.3" stroke="currentColor" stroke-width="1.2" stroke-linecap="round"/></symbol>
+  <symbol id="i-pin" viewBox="0 0 20 20"><path d="M11.8 3.2 16.8 8.2l-2.2 2.2-3-.4-3.2 3.2-1-1L10.6 9l-.4-3Z" fill="none" stroke="currentColor" stroke-width="1.4" stroke-linejoin="round" stroke-linecap="round"/><path d="M7.4 12.6 3.5 16.5" stroke="currentColor" stroke-width="1.4" stroke-linecap="round"/></symbol>
+  <symbol id="i-pata" viewBox="0 0 20 20"><ellipse cx="10" cy="12.5" rx="4.2" ry="3.4" fill="currentColor"/><ellipse cx="4.8" cy="8.2" rx="1.7" ry="2.1" fill="currentColor"/><ellipse cx="9" cy="5.8" rx="1.7" ry="2.2" fill="currentColor"/><ellipse cx="13.4" cy="6.3" rx="1.7" ry="2.2" fill="currentColor"/><ellipse cx="16.2" cy="9.6" rx="1.5" ry="1.9" fill="currentColor"/></symbol>
+  <symbol id="i-alca" viewBox="0 0 20 20"><g fill="currentColor"><circle cx="7" cy="5" r="1.2"/><circle cx="13" cy="5" r="1.2"/><circle cx="7" cy="10" r="1.2"/><circle cx="13" cy="10" r="1.2"/><circle cx="7" cy="15" r="1.2"/><circle cx="13" cy="15" r="1.2"/></g></symbol>
+  <symbol id="i-calma" viewBox="0 0 20 20"><path d="M3.5 11c1.5-3.5 3-3.5 4-1.5s2.5 2 4-1.5S15 6 16.5 9" fill="none" stroke="currentColor" stroke-width="1.4" stroke-linecap="round" stroke-linejoin="round"/></symbol>
+  <symbol id="i-ok" viewBox="0 0 20 20"><path d="M4 10h12" stroke="currentColor" stroke-width="1.6" stroke-linecap="round"/></symbol>
+  <symbol id="i-agitada" viewBox="0 0 20 20"><path d="M3.5 13 7 7l3 5 3-6 3.5 7" fill="none" stroke="currentColor" stroke-width="1.4" stroke-linecap="round" stroke-linejoin="round"/></symbol>
+  <symbol id="i-cansada" viewBox="0 0 20 20"><path d="M4 12.5c2-1.5 3-1.5 5 0M11 12.5c2-1.5 3-1.5 5 0" fill="none" stroke="currentColor" stroke-width="1.4" stroke-linecap="round"/></symbol>
+  <symbol id="i-pilha1" viewBox="0 0 20 20"><rect x="3" y="8" width="14" height="6" rx="1.8" fill="none" stroke="currentColor" stroke-width="1.3"/><rect x="4.5" y="9.5" width="3" height="3" rx=".6" fill="currentColor"/></symbol>
+  <symbol id="i-pilha2" viewBox="0 0 20 20"><rect x="3" y="8" width="14" height="6" rx="1.8" fill="none" stroke="currentColor" stroke-width="1.3"/><rect x="4.5" y="9.5" width="8" height="3" rx=".6" fill="currentColor"/></symbol>
+  <symbol id="i-pilha3" viewBox="0 0 20 20"><rect x="3" y="8" width="14" height="6" rx="1.8" fill="none" stroke="currentColor" stroke-width="1.3"/><rect x="4.5" y="9.5" width="11.2" height="3" rx=".6" fill="currentColor"/></symbol>
+  <symbol id="i-comprimido" viewBox="0 0 20 20"><rect x="3" y="8.3" width="14" height="5.4" rx="2.7" transform="rotate(-30 10 11)" fill="none" stroke="currentColor" stroke-width="1.4"/><path d="M9 8.8 11 13.2" stroke="currentColor" stroke-width="1.2"/></symbol>
+  <symbol id="i-calendario" viewBox="0 0 20 20"><rect x="3" y="4.5" width="14" height="12" rx="2" fill="none" stroke="currentColor" stroke-width="1.4"/><path d="M3 8h14M6.5 3v3M13.5 3v3" stroke="currentColor" stroke-width="1.4" stroke-linecap="round"/></symbol>
+  <symbol id="i-grafico" viewBox="0 0 20 20"><g stroke="currentColor" stroke-width="1.6" stroke-linecap="round"><path d="M5 15V10M10 15V6M15 15v-4"/></g></symbol>
+  <symbol id="i-config" viewBox="0 0 20 20"><circle cx="10" cy="10" r="2.6" fill="none" stroke="currentColor" stroke-width="1.4"/><path d="M10 3v2.1M10 14.9V17M17 10h-2.1M5.1 10H3M14.9 5.1l-1.5 1.5M6.6 13.4l-1.5 1.5M14.9 14.9l-1.5-1.5M6.6 6.6 5.1 5.1" stroke="currentColor" stroke-width="1.4" stroke-linecap="round"/></symbol>
+  <symbol id="i-check" viewBox="0 0 20 20"><path d="M4 10.5l3.6 3.6L16 5.5" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/></symbol>
+  <symbol id="i-mais" viewBox="0 0 20 20"><path d="M10 4v12M4 10h12" stroke="currentColor" stroke-width="1.6" stroke-linecap="round"/></symbol>
+</svg>
+
+<div class="app" id="app">
+
+  <header class="cabecalho">
+    <div>
+      <div class="cab-marca"><svg><use href="#i-gato"/></svg><span>Rotina</span></div>
+      <h1 class="cab-saudacao" id="saudacao">Boa tarde, Ana</h1>
+      <p class="cab-data" id="dataHoje"></p>
+    </div>
+    <div class="cab-widgets">
+      <div class="cab-item mini-cal" id="miniCalendario"></div>
+      <div class="cab-item progresso-anel">
+        <div class="anel" id="anelProgresso" style="--pct:0"></div>
+        <div class="progresso-texto"><strong id="progressoTexto">0/0</strong><span>feitas hoje</span></div>
+      </div>
+      <button class="tema-botao" id="botaoTema" aria-label="Alternar tema claro e escuro">
+        <svg class="icone-sol"><use href="#i-sol"/></svg>
+        <svg class="icone-lua"><use href="#i-lua"/></svg>
+      </button>
+    </div>
+  </header>
+
+  <nav class="abas" id="abas" role="tablist" aria-label="Seções do app">
+    <button class="aba" role="tab" aria-selected="true" data-alvo="vistaHoje"><svg><use href="#i-pata"/></svg>Hoje</button>
+    <button class="aba" role="tab" aria-selected="false" data-alvo="vistaRotina"><svg><use href="#i-lista"/></svg>Rotina</button>
+    <button class="aba" role="tab" aria-selected="false" data-alvo="vistaCalendario"><svg><use href="#i-calendario"/></svg>Calendário</button>
+    <button class="aba" role="tab" aria-selected="false" data-alvo="vistaProgresso"><svg><use href="#i-grafico"/></svg>Progresso</button>
+    <button class="aba" role="tab" aria-selected="false" data-alvo="vistaConfig"><svg><use href="#i-config"/></svg>Config.</button>
+  </nav>
+
+  <!-- ===================== HOJE ===================== -->
+  <div class="vista" id="vistaHoje" role="tabpanel">
+    <div class="painel" id="painel">
+
+      <article class="bloco bloco--foco" data-cor="pessego" data-id="foco" draggable="true">
+        <div class="bloco-cab">
+          <div class="bloco-titulo-grupo">
+            <span class="bloco-icone"><svg><use href="#i-alvo"/></svg></span>
+            <span class="bloco-titulo">Foco de hoje</span>
+          </div>
+          <button class="arrastar-alca" aria-label="Reordenar bloco Foco de hoje" tabindex="0"><svg><use href="#i-alca"/></svg></button>
+        </div>
+        <p class="foco-meta">Terminar a proposta do projeto X</p>
+        <p class="foco-legenda">Se hoje só der pra fazer uma coisa, que seja essa.</p>
+        <div class="foco-progresso"><i style="width:35%"></i></div>
+        <p class="foco-nota">2 de 5 partes concluídas</p>
+      </article>
+
+      <article class="bloco" data-cor="rosa" data-id="prioridades" draggable="true">
+        <div class="bloco-cab">
+          <div class="bloco-titulo-grupo">
+            <span class="bloco-icone"><svg><use href="#i-bandeira"/></svg></span>
+            <span class="bloco-titulo">Prioridades</span>
+          </div>
+          <button class="arrastar-alca" aria-label="Reordenar bloco Prioridades" tabindex="0"><svg><use href="#i-alca"/></svg></button>
+        </div>
+        <ul class="lista-itens">
+          <li class="item"><button class="marca-check" aria-label="Marcar concluída"><svg><use href="#i-check"/></svg><svg class="patinha"><use href="#i-pata"/></svg></button><div class="item-corpo"><p class="item-nome">Enviar proposta do projeto X</p></div></li>
+          <li class="item feita"><button class="marca-check" aria-label="Marcar concluída"><svg><use href="#i-check"/></svg><svg class="patinha"><use href="#i-pata"/></svg></button><div class="item-corpo"><p class="item-nome">Ligar pro dentista</p></div></li>
+          <li class="item"><button class="marca-check" aria-label="Marcar concluída"><svg><use href="#i-check"/></svg><svg class="patinha"><use href="#i-pata"/></svg></button><div class="item-corpo"><p class="item-nome">Pagar o boleto de luz</p></div></li>
+        </ul>
+      </article>
+
+      <article class="bloco" data-cor="ceu" data-id="agenda" draggable="true">
+        <div class="bloco-cab">
+          <div class="bloco-titulo-grupo">
+            <span class="bloco-icone"><svg><use href="#i-relogio"/></svg></span>
+            <span class="bloco-titulo">Agenda do dia</span>
+          </div>
+          <button class="arrastar-alca" aria-label="Reordenar bloco Agenda do dia" tabindex="0"><svg><use href="#i-alca"/></svg></button>
+        </div>
+        <ol class="linha-tempo">
+          <li><span class="lt-hora">09:00</span><span class="lt-marcador"><span class="lt-ponto"></span><span class="lt-fio"></span></span><div class="lt-corpo"><p class="lt-titulo">Reunião com a equipe</p><p class="lt-local">Chamada de vídeo</p></div></li>
+          <li><span class="lt-hora">12:30</span><span class="lt-marcador"><span class="lt-ponto"></span><span class="lt-fio"></span></span><div class="lt-corpo"><p class="lt-titulo">Almoço</p></div></li>
+          <li><span class="lt-hora">15:00</span><span class="lt-marcador"><span class="lt-ponto"></span><span class="lt-fio"></span></span><div class="lt-corpo"><p class="lt-titulo">Terapia</p><p class="lt-local">Consultório</p></div></li>
+          <li><span class="lt-hora">19:00</span><span class="lt-marcador"><span class="lt-ponto"></span></span><div class="lt-corpo"><p class="lt-titulo">Jantar com a Bia</p></div></li>
+        </ol>
+      </article>
+
+      <article class="bloco" data-cor="lilas" data-id="tarefas" draggable="true">
+        <div class="bloco-cab">
+          <div class="bloco-titulo-grupo">
+            <span class="bloco-icone"><svg><use href="#i-lista"/></svg></span>
+            <span class="bloco-titulo">Tarefas</span>
+          </div>
+          <button class="arrastar-alca" aria-label="Reordenar bloco Tarefas" tabindex="0"><svg><use href="#i-alca"/></svg></button>
+        </div>
+        <ul class="lista-itens">
+          <li class="item"><button class="marca-check" aria-label="Marcar concluída"><svg><use href="#i-check"/></svg><svg class="patinha"><use href="#i-pata"/></svg></button><div class="item-corpo"><p class="item-nome">Separar roupa de lavar</p><div class="item-meta"><span class="selo selo-media">média</span></div></div></li>
+          <li class="item"><button class="marca-check" aria-label="Marcar concluída"><svg><use href="#i-check"/></svg><svg class="patinha"><use href="#i-pata"/></svg></button><div class="item-corpo"><p class="item-nome">Responder e-mail da faculdade</p><div class="item-meta"><span class="selo selo-alta">alta</span></div></div></li>
+          <li class="item feita"><button class="marca-check" aria-label="Marcar concluída"><svg><use href="#i-check"/></svg><svg class="patinha"><use href="#i-pata"/></svg></button><div class="item-corpo"><p class="item-nome">Regar as plantas</p><div class="item-meta"><span class="selo selo-baixa">baixa</span></div></div></li>
+        </ul>
+      </article>
+
+      <article class="bloco" data-cor="areia" data-id="depois" draggable="true">
+        <div class="bloco-cab">
+          <div class="bloco-titulo-grupo">
+            <span class="bloco-icone"><svg><use href="#i-bandeja"/></svg></span>
+            <span class="bloco-titulo">Fazer depois</span>
+          </div>
+          <button class="arrastar-alca" aria-label="Reordenar bloco Fazer depois" tabindex="0"><svg><use href="#i-alca"/></svg></button>
+        </div>
+        <p class="bloco-sub" style="margin-bottom:10px;">Sem pressa — fica guardado aqui até você ter espaço.</p>
+        <div class="chips">
+          <div class="chip"><svg><use href="#i-bandeja"/></svg>Organizar o armário</div>
+          <div class="chip"><svg><use href="#i-bandeja"/></svg>Responder e-mails antigos</div>
+        </div>
+      </article>
+
+      <article class="bloco" data-cor="lilas" data-id="mente" draggable="true">
+        <div class="bloco-cab">
+          <div class="bloco-titulo-grupo">
+            <span class="bloco-icone"><svg><use href="#i-nuvem"/></svg></span>
+            <span class="bloco-titulo">Descarregar a mente</span>
+          </div>
+          <button class="arrastar-alca" aria-label="Reordenar bloco Descarregar a mente" tabindex="0"><svg><use href="#i-alca"/></svg></button>
+        </div>
+        <textarea class="mente-area" id="menteTexto" placeholder="O que está passando pela cabeça agora? Pode escrever sem se preocupar em organizar."></textarea>
+        <p class="mente-legenda">Fica só aqui, salvo automaticamente.</p>
+      </article>
+
+      <article class="bloco" data-cor="menta" data-id="autocuidado" draggable="true">
+        <div class="bloco-cab">
+          <div class="bloco-titulo-grupo">
+            <span class="bloco-icone"><svg><use href="#i-coracao"/></svg></span>
+            <span class="bloco-titulo">Autocuidado</span>
+          </div>
+          <button class="arrastar-alca" aria-label="Reordenar bloco Autocuidado" tabindex="0"><svg><use href="#i-alca"/></svg></button>
+        </div>
+        <div class="grade-toques">
+          <button class="toque feita" type="button"><svg><use href="#i-comprimido"/></svg>Medicação das 8h<span class="toque-marca"><svg><use href="#i-check"/></svg></span></button>
+          <button class="toque" type="button"><svg><use href="#i-gota"/></svg>Tomar banho<span class="toque-marca"><svg><use href="#i-check"/></svg></span></button>
+          <button class="toque" type="button"><svg><use href="#i-tigela"/></svg>Comer alguma coisa<span class="toque-marca"><svg><use href="#i-check"/></svg></span></button>
+          <button class="toque" type="button"><svg><use href="#i-lua"/></svg>15 min de descanso<span class="toque-marca"><svg><use href="#i-check"/></svg></span></button>
+        </div>
+      </article>
+
+      <article class="bloco" data-cor="rosa" data-id="habitos" draggable="true">
+        <div class="bloco-cab">
+          <div class="bloco-titulo-grupo">
+            <span class="bloco-icone"><svg><use href="#i-repetir"/></svg></span>
+            <span class="bloco-titulo">Hábitos</span>
+          </div>
+          <button class="arrastar-alca" aria-label="Reordenar bloco Hábitos" tabindex="0"><svg><use href="#i-alca"/></svg></button>
+        </div>
+        <div id="listaHabitos"></div>
+      </article>
+
+      <article class="bloco" data-cor="ceu" data-id="agua" draggable="true">
+        <div class="bloco-cab">
+          <div class="bloco-titulo-grupo">
+            <span class="bloco-icone"><svg><use href="#i-gota"/></svg></span>
+            <span class="bloco-titulo">Água</span>
+          </div>
+          <button class="arrastar-alca" aria-label="Reordenar bloco Água" tabindex="0"><svg><use href="#i-alca"/></svg></button>
+        </div>
+        <div class="agua-linha" id="linhaAgua"></div>
+        <p class="agua-texto"><strong id="aguaTexto">0</strong> de 8 copos</p>
+      </article>
+
+      <article class="bloco" data-cor="pessego" data-id="refeicoes" draggable="true">
+        <div class="bloco-cab">
+          <div class="bloco-titulo-grupo">
+            <span class="bloco-icone"><svg><use href="#i-tigela"/></svg></span>
+            <span class="bloco-titulo">Refeições</span>
+          </div>
+          <button class="arrastar-alca" aria-label="Reordenar bloco Refeições" tabindex="0"><svg><use href="#i-alca"/></svg></button>
+        </div>
+        <div class="refeicoes" id="refeicoes">
+          <div class="refeicao"><span>Café da manhã</span><button type="button" class="marcada">comi</button></div>
+          <div class="refeicao"><span>Almoço</span><button type="button">ainda não</button></div>
+          <div class="refeicao"><span>Lanche</span><button type="button">ainda não</button></div>
+          <div class="refeicao"><span>Jantar</span><button type="button">ainda não</button></div>
+        </div>
+      </article>
+
+      <article class="bloco" data-cor="lilas" data-id="humor" draggable="true">
+        <div class="bloco-cab">
+          <div class="bloco-titulo-grupo">
+            <span class="bloco-icone"><svg><use href="#i-calma"/></svg></span>
+            <span class="bloco-titulo">Humor e energia</span>
+          </div>
+          <button class="arrastar-alca" aria-label="Reordenar bloco Humor e energia" tabindex="0"><svg><use href="#i-alca"/></svg></button>
+        </div>
+        <div class="escala-grupo">
+          <p class="escala-rotulo">Como você está?</p>
+          <div class="escala-opcoes" id="grupoHumor">
+            <button class="escala-btn" data-valor="calma" aria-pressed="true"><svg><use href="#i-calma"/></svg><span>Calma</span></button>
+            <button class="escala-btn" data-valor="ok" aria-pressed="false"><svg><use href="#i-ok"/></svg><span>Ok</span></button>
+            <button class="escala-btn" data-valor="agitada" aria-pressed="false"><svg><use href="#i-agitada"/></svg><span>Agitada</span></button>
+            <button class="escala-btn" data-valor="cansada" aria-pressed="false"><svg><use href="#i-cansada"/></svg><span>Cansada</span></button>
+          </div>
+        </div>
+        <div class="escala-grupo">
+          <p class="escala-rotulo">Energia</p>
+          <div class="escala-opcoes" id="grupoEnergia">
+            <button class="escala-btn" data-valor="baixa" aria-pressed="false"><svg><use href="#i-pilha1"/></svg><span>Baixa</span></button>
+            <button class="escala-btn" data-valor="media" aria-pressed="true"><svg><use href="#i-pilha2"/></svg><span>Média</span></button>
+            <button class="escala-btn" data-valor="alta" aria-pressed="false"><svg><use href="#i-pilha3"/></svg><span>Alta</span></button>
+          </div>
+        </div>
+      </article>
+
+      <article class="bloco" data-cor="areia" data-id="lembrar" draggable="true">
+        <div class="bloco-cab">
+          <div class="bloco-titulo-grupo">
+            <span class="bloco-icone"><svg><use href="#i-pin"/></svg></span>
+            <span class="bloco-titulo">Não esquecer</span>
+          </div>
+          <button class="arrastar-alca" aria-label="Reordenar bloco Não esquecer" tabindex="0"><svg><use href="#i-alca"/></svg></button>
+        </div>
+        <div class="chips">
+          <div class="chip"><svg><use href="#i-pin"/></svg>Levar guarda-chuva</div>
+          <div class="chip"><svg><use href="#i-pin"/></svg>Carregar o celular à noite</div>
+          <div class="chip"><svg><use href="#i-pin"/></svg>Chave reserva com a Bia</div>
+        </div>
+      </article>
+
+      <article class="bloco" data-cor="dourado" data-id="conquistas" draggable="true">
+        <div class="bloco-cab">
+          <div class="bloco-titulo-grupo">
+            <span class="bloco-icone"><svg><use href="#i-pata"/></svg></span>
+            <span class="bloco-titulo">Conquistas do dia</span>
+          </div>
+          <button class="arrastar-alca" aria-label="Reordenar bloco Conquistas do dia" tabindex="0"><svg><use href="#i-alca"/></svg></button>
+        </div>
+        <div class="medalhas" id="medalhas">
+          <span class="medalha"><svg><use href="#i-pata"/></svg>Acordou dentro do horário</span>
+          <span class="medalha"><svg><use href="#i-pata"/></svg>Tomou a medicação</span>
+        </div>
+        <p class="mente-legenda" style="margin-top:9px;">Até as pequenas contam — sem cobrança por aqui.</p>
+      </article>
+
+    </div>
+  </div>
+
+  <!-- ===================== ROTINA ===================== -->
+  <div class="vista" id="vistaRotina" role="tabpanel" hidden>
+    <div class="tela-simples">
+      <div class="tela-cab"><h2 class="tela-titulo">Todas as tarefas</h2></div>
+      <div class="cartao-simples">
+        <p class="bloco-sub" style="margin:0 0 10px;">Prioridades</p>
+        <ul class="lista-itens">
+          <li class="item"><button class="marca-check" style="border-color:var(--rosa-tinta)"><svg><use href="#i-check"/></svg></button><div class="item-corpo"><p class="item-nome">Enviar proposta do projeto X</p></div></li>
+          <li class="item"><button class="marca-check" style="border-color:var(--rosa-tinta)"><svg><use href="#i-check"/></svg></button><div class="item-corpo"><p class="item-nome">Pagar o boleto de luz</p></div></li>
+        </ul>
+      </div>
+      <div class="cartao-simples">
+        <p class="bloco-sub" style="margin:0 0 10px;">Tarefas do dia</p>
+        <ul class="lista-itens">
+          <li class="item"><button class="marca-check"><svg><use href="#i-check"/></svg></button><div class="item-corpo"><p class="item-nome">Separar roupa de lavar</p><div class="item-meta"><span class="selo selo-media">média</span></div></div></li>
+          <li class="item"><button class="marca-check"><svg><use href="#i-check"/></svg></button><div class="item-corpo"><p class="item-nome">Responder e-mail da faculdade</p><div class="item-meta"><span class="selo selo-alta">alta</span></div></div></li>
+        </ul>
+      </div>
+      <div class="cartao-simples">
+        <p class="bloco-sub" style="margin:0 0 10px;">Fazer depois</p>
+        <div class="chips">
+          <div class="chip"><svg><use href="#i-bandeja"/></svg>Organizar o armário</div>
+          <div class="chip"><svg><use href="#i-bandeja"/></svg>Responder e-mails antigos</div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- ===================== CALENDÁRIO ===================== -->
+  <div class="vista" id="vistaCalendario" role="tabpanel" hidden>
+    <div class="tela-simples">
+      <div class="tela-cab"><h2 class="tela-titulo" id="calGrandeTitulo">Mês</h2></div>
+      <div class="cartao-simples">
+        <div class="cal-grande" id="calGrande"></div>
+      </div>
+    </div>
+  </div>
+
+  <!-- ===================== PROGRESSO ===================== -->
+  <div class="vista" id="vistaProgresso" role="tabpanel" hidden>
+    <div class="tela-simples">
+      <div class="tela-cab"><h2 class="tela-titulo">Progresso</h2></div>
+      <div class="cartao-simples">
+        <p class="bloco-sub" style="margin:0 0 10px;">Hábitos da semana</p>
+        <div id="listaHabitosProgresso"></div>
+      </div>
+      <div class="cartao-simples">
+        <p class="bloco-sub" style="margin:0 0 10px;">Conquistas recentes</p>
+        <div class="medalhas">
+          <span class="medalha"><svg><use href="#i-pata"/></svg>3 dias seguidos de água em dia</span>
+          <span class="medalha"><svg><use href="#i-pata"/></svg>Semana com terapia em dia</span>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- ===================== CONFIGURAÇÕES ===================== -->
+  <div class="vista" id="vistaConfig" role="tabpanel" hidden>
+    <div class="tela-simples">
+      <div class="tela-cab"><h2 class="tela-titulo">Configurações</h2></div>
+      <div class="cartao-simples config-lista">
+        <div class="config-item">
+          <div class="config-item-texto"><strong>Tema escuro</strong><span>Combina com pouca luz e telas à noite</span></div>
+          <button class="interruptor" id="interruptorTema" aria-pressed="false" aria-label="Alternar tema escuro"></button>
+        </div>
+        <div class="config-item">
+          <div class="config-item-texto"><strong>Notificações gentis</strong><span>Lembretes sem som alarmante</span></div>
+          <button class="interruptor" aria-pressed="true" aria-label="Alternar notificações"></button>
+        </div>
+        <div class="config-item">
+          <div class="config-item-texto"><strong>Categorias e cores</strong><span>Personalize os blocos do seu painel</span></div>
+          <button class="arrastar-alca" style="opacity:1" aria-label="Editar categorias"><svg><use href="#i-config"/></svg></button>
+        </div>
+      </div>
+    </div>
+  </div>
+
+</div>
+
+<script>
+(function(){
+  const raiz = document.documentElement;
+  const salvo = localStorage.getItem('rotina-tema');
+  if (salvo) raiz.dataset.theme = salvo;
+
+  function aplicarTema(t){
+    raiz.dataset.theme = t;
+    localStorage.setItem('rotina-tema', t);
+    document.getElementById('interruptorTema').setAttribute('aria-pressed', t === 'dark' ? 'true' : 'false');
+  }
+  document.getElementById('botaoTema').addEventListener('click', () => {
+    const atual = raiz.dataset.theme === 'dark' ? 'dark' : (raiz.dataset.theme === 'light' ? 'light' : (matchMedia('(prefers-color-scheme: dark)').matches ? 'dark' : 'light'));
+    aplicarTema(atual === 'dark' ? 'light' : 'dark');
+  });
+  document.getElementById('interruptorTema').addEventListener('click', () => {
+    aplicarTema(raiz.dataset.theme === 'dark' ? 'light' : 'dark');
+  });
+
+  const hoje = new Date();
+  document.getElementById('dataHoje').textContent = hoje.toLocaleDateString('pt-BR', { weekday:'long', day:'numeric', month:'long' });
+  const hora = hoje.getHours();
+  document.getElementById('saudacao').textContent = (hora < 12 ? 'Bom dia, Ana' : hora < 18 ? 'Boa tarde, Ana' : 'Boa noite, Ana');
+
+  const diasComTarefaDemo = new Set([hoje.getDate()-2, hoje.getDate()+1, hoje.getDate()+4].filter(d => d > 0));
+
+  function montarCalendario(elId, tituloId, mini){
+    const el = document.getElementById(elId);
+    if (!el) return;
+    const ano = hoje.getFullYear(), mes = hoje.getMonth();
+    if (tituloId) document.getElementById(tituloId).textContent = hoje.toLocaleDateString('pt-BR', { month:'long', year:'numeric' });
+    if (mini){
+      const cab = document.createElement('div'); cab.className = 'mini-cal-cab';
+      cab.innerHTML = `<span>${hoje.toLocaleDateString('pt-BR',{month:'short'})}</span>`;
+      el.appendChild(cab);
+    }
+    const grade = document.createElement('div'); grade.className = mini ? 'mini-cal-grade' : '';
+    if (!mini) grade.classList.add('cal-grande');
+    const primeiro = new Date(ano, mes, 1);
+    const diasNoMes = new Date(ano, mes+1, 0).getDate();
+    for (let i=0;i<primeiro.getDay();i++){ grade.appendChild(document.createElement('span')); }
+    for (let d=1; d<=diasNoMes; d++){
+      const s = document.createElement('span');
+      s.className = 'dia' + (d === hoje.getDate() ? ' hoje' : '') + (diasComTarefaDemo.has(d) ? ' tem-tarefa' : '');
+      s.textContent = d;
+      grade.appendChild(s);
+    }
+    el.appendChild(grade);
+  }
+  montarCalendario('miniCalendario', null, true);
+  montarCalendario('calGrande', 'calGrandeTitulo', false);
+
+  const abas = document.querySelectorAll('.aba');
+  abas.forEach(botao => {
+    botao.addEventListener('click', () => {
+      abas.forEach(b => b.setAttribute('aria-selected', 'false'));
+      botao.setAttribute('aria-selected', 'true');
+      document.querySelectorAll('.vista').forEach(v => { v.hidden = v.id !== botao.dataset.alvo; });
+    });
+  });
+
+  function reflow(el){ void el.offsetWidth; }
+  document.querySelectorAll('.item .marca-check, .toque').forEach(el => {
+    el.addEventListener('click', () => {
+      const alvo = el.classList.contains('toque') ? el : el.closest('.item');
+      alvo.classList.toggle('feita');
+      reflow(alvo);
+      atualizarProgresso();
+    });
+  });
+
+  function atualizarProgresso(){
+    const itens = document.querySelectorAll('#vistaHoje .item, #vistaHoje .toque');
+    const feitas = document.querySelectorAll('#vistaHoje .item.feita, #vistaHoje .toque.feita');
+    const total = itens.length, feito = feitas.length;
+    const pct = total ? Math.round((feito/total)*100) : 0;
+    document.getElementById('anelProgresso').style.setProperty('--pct', pct);
+    document.getElementById('progressoTexto').textContent = `${feito}/${total}`;
+  }
+  atualizarProgresso();
+
+  const habitos = [
+    { nome:'Beber água ao acordar', cor:'rosa' },
+    { nome:'Alongar 5 minutos', cor:'rosa' },
+    { nome:'Ler 10 páginas', cor:'rosa' }
+  ];
+  const diasSemana = ['D','S','T','Q','Q','S','S'];
+  function montarHabitos(elId, interativo){
+    const el = document.getElementById(elId);
+    if (!el) return;
+    habitos.forEach(h => {
+      const linha = document.createElement('div'); linha.className = 'habito';
+      const nome = document.createElement('span'); nome.className = 'habito-nome'; nome.textContent = h.nome;
+      const dias = document.createElement('div'); dias.className = 'habito-dias';
+      diasSemana.forEach((_, i) => {
+        const dot = document.createElement('span');
+        const ehHoje = i === hoje.getDay();
+        dot.className = 'habito-dia' + (ehHoje ? ' hoje-dia' : '') + (i < hoje.getDay() && Math.random() > 0.35 ? ' feito' : '');
+        if (ehHoje && interativo){
+          dot.addEventListener('click', () => dot.classList.toggle('feito'));
+        }
+        dias.appendChild(dot);
+      });
+      linha.appendChild(nome); linha.appendChild(dias);
+      el.appendChild(linha);
+    });
+  }
+  montarHabitos('listaHabitos', true);
+  montarHabitos('listaHabitosProgresso', false);
+
+  const linhaAgua = document.getElementById('linhaAgua');
+  let copos = 3;
+  function desenharAgua(){
+    linhaAgua.innerHTML = '';
+    for (let i=1;i<=8;i++){
+      const b = document.createElement('button');
+      b.className = 'gota' + (i <= copos ? ' cheia' : '');
+      b.type = 'button';
+      b.setAttribute('aria-label', `Marcar ${i} copos de água`);
+      b.innerHTML = '<svg><use href="#i-gota"/></svg>';
+      b.addEventListener('click', () => { copos = (copos === i) ? i-1 : i; desenharAgua(); });
+      linhaAgua.appendChild(b);
+    }
+    document.getElementById('aguaTexto').textContent = copos;
+  }
+  desenharAgua();
+
+  document.querySelectorAll('.refeicao button').forEach(b => {
+    b.addEventListener('click', () => {
+      b.classList.toggle('marcada');
+      b.textContent = b.classList.contains('marcada') ? 'comi' : 'ainda não';
+    });
+  });
+
+  function ligarEscala(grupoId){
+    const grupo = document.getElementById(grupoId);
+    grupo.querySelectorAll('.escala-btn').forEach(b => {
+      b.addEventListener('click', () => {
+        grupo.querySelectorAll('.escala-btn').forEach(x => x.setAttribute('aria-pressed','false'));
+        b.setAttribute('aria-pressed','true');
+      });
+    });
+  }
+  ligarEscala('grupoHumor');
+  ligarEscala('grupoEnergia');
+
+  const menteArea = document.getElementById('menteTexto');
+  const menteSalva = localStorage.getItem('rotina-mente');
+  if (menteSalva) menteArea.value = menteSalva;
+  menteArea.addEventListener('input', () => localStorage.setItem('rotina-mente', menteArea.value));
+
+  const painel = document.getElementById('painel');
+  let arrastando = null;
+  painel.querySelectorAll('.bloco').forEach(bloco => {
+    bloco.addEventListener('dragstart', () => { arrastando = bloco; bloco.classList.add('arrastando'); });
+    bloco.addEventListener('dragend', () => { bloco.classList.remove('arrastando'); arrastando = null; salvarOrdem(); });
+    bloco.addEventListener('dragover', e => {
+      e.preventDefault();
+      if (!arrastando || arrastando === bloco) return;
+      const depois = [...painel.children].indexOf(bloco) > [...painel.children].indexOf(arrastando);
+      painel.insertBefore(arrastando, depois ? bloco.nextSibling : bloco);
+    });
+    const alca = bloco.querySelector('.arrastar-alca');
+    if (alca){
+      alca.addEventListener('keydown', e => {
+        if (e.key !== 'ArrowUp' && e.key !== 'ArrowDown') return;
+        e.preventDefault();
+        const irmao = e.key === 'ArrowUp' ? bloco.previousElementSibling : bloco.nextElementSibling;
+        if (!irmao) return;
+        if (e.key === 'ArrowUp') painel.insertBefore(bloco, irmao); else painel.insertBefore(irmao, bloco);
+        alca.focus();
+        salvarOrdem();
+      });
+    }
+  });
+  function salvarOrdem(){
+    const ordem = [...painel.children].map(b => b.dataset.id);
+    localStorage.setItem('rotina-ordem', JSON.stringify(ordem));
+  }
+  const ordemSalva = localStorage.getItem('rotina-ordem');
+  if (ordemSalva){
+    try{
+      JSON.parse(ordemSalva).forEach(id => {
+        const bloco = painel.querySelector(`[data-id="${id}"]`);
+        if (bloco) painel.appendChild(bloco);
+      });
+    }catch(e){}
+  }
+})();
+</script>

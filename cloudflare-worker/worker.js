@@ -172,13 +172,16 @@ async function checarRotinas(env) {
 
   for (const usuario of usuarios) {
     const dados = usuario.dados;
-    const tarefas = dados.tarefas || [];
+    // "itens" substituiu "tarefas" (ver FIRESTORE.md); só tarefa e
+    // compromisso têm horário e fazem sentido notificar.
+    const itens = dados.itens || [];
     const concluidasHoje = (dados.concluidas || {})[dataISO] || [];
     const notificadas = { ...(dados.notificadas || {}) };
     const notificadasHoje = new Set(notificadas[dataISO] || []);
     const tokens = (dados.pushTokens || []).map(t => t.token).filter(Boolean);
 
-    const devidas = tarefas.filter(t =>
+    const devidas = itens.filter(t =>
+      (t.tipo === 'tarefa' || t.tipo === 'compromisso') &&
       t.ativa && t.horario === hhmm &&
       (!t.dias || t.dias.length === 0 || t.dias.includes(diaSemana)) &&
       !concluidasHoje.includes(t.id) &&

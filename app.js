@@ -4,7 +4,7 @@ import {
   getRedirectResult, onAuthStateChanged, signOut
 } from 'https://www.gstatic.com/firebasejs/10.12.5/firebase-auth.js';
 import {
-  getFirestore, doc, getDoc, setDoc, updateDoc, onSnapshot
+  getFirestore, doc, getDoc, setDoc, updateDoc, deleteField, onSnapshot
 } from 'https://www.gstatic.com/firebasejs/10.12.5/firebase-firestore.js';
 import {
   getMessaging, getToken, onMessage, isSupported
@@ -28,24 +28,38 @@ const app = initializeApp(FIREBASE_CONFIG);
 const auth = getAuth(app);
 const db = getFirestore(app);
 
-const DIAS_SEMANA = ['dom','seg','ter','qua','qui','sex','sáb'];
 const $ = id => document.getElementById(id);
+const CATEGORIA_ICONE = { higiene:'🧼', casa:'🧹', trabalho:'💼', saude:'💊', outro:'✨' };
+const ICONE_SVG = { comprimido:'#i-comprimido', gota:'#i-gota', tigela:'#i-tigela', lua:'#i-lua', coracao:'#i-coracao' };
 
 let uid = null;
 let dadosUsuario = null; // documento inteiro em memória
-let tarefaAtualChat = null;
+let itemAtualChat = null;
+let itemEmEdicao = null;
+let diaDialogAtual = null;
 
 // ---------- Tema claro/escuro ----------
 function aplicarTema(tema) {
   document.documentElement.setAttribute('data-tema', tema);
-  $('temaBtn').textContent = tema === 'escuro' ? '🌙' : '☀️';
+  $('interruptorTema').setAttribute('aria-pressed', tema === 'escuro' ? 'true' : 'false');
 }
 const temaSalvo = localStorage.getItem('tema');
 aplicarTema(temaSalvo || (window.matchMedia('(prefers-color-scheme: dark)').matches ? 'escuro' : 'claro'));
-$('temaBtn').addEventListener('click', () => {
+function alternarTema() {
   const novo = document.documentElement.getAttribute('data-tema') === 'escuro' ? 'claro' : 'escuro';
   localStorage.setItem('tema', novo);
   aplicarTema(novo);
+}
+$('botaoTema').addEventListener('click', alternarTema);
+$('interruptorTema').addEventListener('click', alternarTema);
+
+// ---------- Navegação por abas ----------
+document.querySelectorAll('.aba').forEach(botao => {
+  botao.addEventListener('click', () => {
+    document.querySelectorAll('.aba').forEach(b => b.setAttribute('aria-selected', 'false'));
+    botao.setAttribute('aria-selected', 'true');
+    document.querySelectorAll('.vista').forEach(v => { v.hidden = v.id !== botao.dataset.alvo; });
+  });
 });
 
 // ---------- Login ----------
@@ -72,7 +86,6 @@ onAuthStateChanged(auth, async user => {
   uid = user.uid;
   $('loginScreen').hidden = true;
   $('appScreen').hidden = false;
-  $('saudacao').textContent = `Olá, ${user.displayName?.split(' ')[0] || ''}`;
   $('menuEmail').textContent = user.email || '';
 
   await garantirDocumento(user);
@@ -85,10 +98,16 @@ async function garantirDocumento(user) {
   if (!snap.exists()) {
     await setDoc(ref, {
       perfil: { nome: user.displayName || '', email: user.email || '', criadoEm: new Date().toISOString() },
-      tarefas: [],
-      concluidas: {},
-      pushTokens: []
+      itens: [], concluidas: {}, foco: {}, mente: {}, agua: {}, refeicoes: {}, humor: {},
+      lembretes: [], conquistasManuais: {}, pushTokens: []
     });
+    return;
+  }
+  const dados = snap.data();
+  if (dados.tarefas && !dados.itens) {
+    // migração automática do formato antigo (só tarefas) pro novo (itens com tipo)
+    const itens = dados.tarefas.map(t => ({ ...t, tipo: 'tarefa' }));
+    await updateDoc(ref, { itens, tarefas: deleteField() });
   }
 }
 
@@ -96,7 +115,7 @@ function escutarDados() {
   const ref = doc(db, 'usuarios', uid);
   onSnapshot(ref, snap => {
     dadosUsuario = snap.data();
-    renderizarTudo();
+    if (dadosUsuario) renderizarTudo();
   });
 }
 
@@ -104,304 +123,652 @@ function escutarDados() {
 function dataISO(d) {
   return `${d.getFullYear()}-${String(d.getMonth()+1).padStart(2,'0')}-${String(d.getDate()).padStart(2,'0')}`;
 }
-function hojeISO() {
-  return dataISO(new Date());
-}
-$('dataHoje').textContent = new Date().toLocaleDateString('pt-BR', { weekday:'long', day:'numeric', month:'long' });
-
-function tarefasDoDia(dataStr) {
-  if (!dadosUsuario) return [];
+function hojeISO() { return dataISO(new Date()); }
+function diaSemanaDe(dataStr) {
   const [ano, mes, dia] = dataStr.split('-').map(Number);
-  const diaSemana = new Date(ano, mes - 1, dia).getDay();
-  return (dadosUsuario.tarefas || [])
-    .filter(t => t.ativa && (!t.dias || t.dias.length === 0 || t.dias.includes(diaSemana)))
-    .sort((a,b) => a.horario.localeCompare(b.horario));
+  return new Date(ano, mes - 1, dia).getDay();
 }
 
-function tarefasDeHoje() {
-  return tarefasDoDia(hojeISO());
+// ---------- Itens (tarefa / compromisso / depois / habito / autocuidado) ----------
+function aplicaHoje(item, dataStr) {
+  if (item.tipo !== 'tarefa' && item.tipo !== 'compromisso') return true;
+  const dia = diaSemanaDe(dataStr);
+  return !item.dias || item.dias.length === 0 || item.dias.includes(dia);
 }
-
-function estaConcluida(id) {
-  const doHoje = (dadosUsuario.concluidas || {})[hojeISO()] || [];
-  return doHoje.includes(id);
+function itensPorTipo(tipo, dataStr = hojeISO()) {
+  return (dadosUsuario.itens || [])
+    .filter(i => i.ativa && i.tipo === tipo && aplicaHoje(i, dataStr))
+    .sort((a, b) => (a.horario || '').localeCompare(b.horario || '') || (a.ordem || 0) - (b.ordem || 0));
 }
-
-// ---------- Render ----------
-function renderizarTudo() {
-  const tarefas = tarefasDeHoje();
-  $('listaVazia').hidden = tarefas.length > 0;
-  renderizarTrilha(tarefas);
-  renderizarAgora(tarefas);
-  const diarias = tarefas.filter(t => !t.dias || t.dias.length === 0 || t.dias.length === 7);
-  const semanais = tarefas.filter(t => t.dias && t.dias.length > 0 && t.dias.length < 7);
-  $('secaoDiarias').hidden = diarias.length === 0;
-  $('secaoSemanais').hidden = semanais.length === 0;
-  renderizarListaEm('listaDiarias', diarias);
-  renderizarListaEm('listaSemanais', semanais);
-  if ($('diaAnteriorDialog').open) renderizarDiaAnterior();
-  renderizarMes();
+function itensConcluiveisDoDia(dataStr) {
+  const dia = diaSemanaDe(dataStr);
+  return (dadosUsuario.itens || []).filter(i => i.ativa && (
+    (i.tipo === 'tarefa' && (!i.dias || i.dias.length === 0 || i.dias.includes(dia))) ||
+    i.tipo === 'habito' || i.tipo === 'autocuidado'
+  ));
 }
-
-function proximaTarefa(tarefas) {
-  const agora = new Date();
-  const agoraMin = agora.getHours()*60 + agora.getMinutes();
-  const pendentes = tarefas.filter(t => !estaConcluida(t.id));
-  // a próxima pendente com horário >= agora, senão a primeira pendente do dia
-  const [h,m] = ['00','00'];
-  let candidata = pendentes.find(t => {
-    const [hh,mm] = t.horario.split(':').map(Number);
-    return (hh*60+mm) >= agoraMin;
-  });
-  return candidata || pendentes[0] || null;
+function diaTemAgenda(dataStr) {
+  const dia = diaSemanaDe(dataStr);
+  return (dadosUsuario.itens || []).some(i => i.ativa && (i.tipo === 'tarefa' || i.tipo === 'compromisso') &&
+    (!i.dias || i.dias.length === 0 || i.dias.includes(dia)));
 }
-
-function renderizarTrilha(tarefas) {
-  const el = $('trilha');
-  el.innerHTML = '';
-  const atual = proximaTarefa(tarefas);
-  tarefas.forEach((t, i) => {
-    if (i > 0) {
-      const linha = document.createElement('span');
-      linha.className = 'trilha-linha' + (estaConcluida(tarefas[i-1].id) ? ' feita' : '');
-      el.appendChild(linha);
-    }
-    const no = document.createElement('li');
-    no.className = 'trilha-no'
-      + (estaConcluida(t.id) ? ' feito' : '')
-      + (atual && atual.id === t.id ? ' agora' : '');
-    no.title = `${t.horario} — ${t.nome}`;
-    el.appendChild(no);
-  });
-}
-
-function renderizarAgora(tarefas) {
-  const atual = proximaTarefa(tarefas);
-  $('agoraCard').hidden = !atual;
-  if (!atual) return;
-  $('agoraCard').className = 'agora-card categoria-' + atual.categoria;
-  $('agoraNome').textContent = atual.nome;
-  $('agoraHorario').textContent = atual.horario;
-  $('agoraConcluir').onclick = () => marcarConcluida(atual.id, true);
-  $('agoraChat').onclick = () => abrirChat(atual);
-}
-
-function renderizarListaEm(ulId, tarefas) {
-  const ul = $(ulId);
-  ul.innerHTML = '';
-  tarefas.forEach(t => {
-    const feita = estaConcluida(t.id);
-    const li = document.createElement('li');
-    li.className = 'tarefa-item categoria-' + t.categoria + (feita ? ' concluida' : '');
-    li.innerHTML = `
-      <button class="tarefa-check" aria-label="Marcar concluída">${feita ? '✓' : ''}</button>
-      <div class="tarefa-info">
-        <p class="tarefa-nome"></p>
-        <p class="tarefa-meta"></p>
-      </div>
-      <span class="tarefa-categoria"></span>
-      <div class="tarefa-acoes">
-        <button type="button" class="tarefa-acao tarefa-editar" aria-label="Editar tarefa" title="Editar">✎</button>
-        <button type="button" class="tarefa-acao tarefa-excluir" aria-label="Excluir tarefa" title="Excluir">🗑</button>
-      </div>
-    `;
-    li.querySelector('.tarefa-nome').textContent = t.nome;
-    li.querySelector('.tarefa-meta').textContent = t.horario;
-    li.querySelector('.tarefa-categoria').textContent = t.categoria;
-    li.querySelector('.tarefa-check').addEventListener('click', () => marcarConcluida(t.id, !feita));
-    li.querySelector('.tarefa-editar').addEventListener('click', () => abrirFormEdicaoTarefa(t));
-    li.querySelector('.tarefa-excluir').addEventListener('click', () => excluirTarefa(t.id));
-    ul.appendChild(li);
-  });
-}
-
-// ---------- Mês: calendário e conquistas ----------
 function diaCompleto(dataStr) {
-  const tarefasDoDiaAlvo = tarefasDoDia(dataStr);
-  if (tarefasDoDiaAlvo.length === 0) return null;
+  const itens = itensConcluiveisDoDia(dataStr);
+  if (itens.length === 0) return null;
   const feitas = (dadosUsuario.concluidas || {})[dataStr] || [];
-  return tarefasDoDiaAlvo.every(t => feitas.includes(t.id));
+  return itens.every(i => feitas.includes(i.id));
+}
+function estaConcluida(id, data = hojeISO()) {
+  return ((dadosUsuario.concluidas || {})[data] || []).includes(id);
+}
+async function marcarConcluida(id, valor, data = hojeISO()) {
+  const mapa = { ...(dadosUsuario.concluidas || {}) };
+  const lista = new Set(mapa[data] || []);
+  if (valor) lista.add(id); else lista.delete(id);
+  mapa[data] = [...lista];
+  await updateDoc(doc(db, 'usuarios', uid), { concluidas: mapa });
+}
+async function excluirItem(id) {
+  if (!confirm('Excluir este item? Essa ação não pode ser desfeita.')) return;
+  const itens = (dadosUsuario.itens || []).filter(i => i.id !== id);
+  await updateDoc(doc(db, 'usuarios', uid), { itens });
 }
 
-function renderizarMes() {
+function criarLinhaItem(item, { data = hojeISO(), comAcoes = false, comChat = false, semCheck = false } = {}) {
+  const feita = !semCheck && estaConcluida(item.id, data);
+  const li = document.createElement('li');
+  li.className = 'item' + (feita ? ' feita' : '');
+  li.innerHTML = `
+    ${semCheck ? '' : '<button class="marca-check" aria-label="Marcar concluída"><svg><use href="#i-check"/></svg><svg class="patinha"><use href="#i-pata"/></svg></button>'}
+    <div class="item-corpo"><p class="item-nome"></p><div class="item-meta"></div></div>
+    ${comAcoes ? `<div class="item-acoes">
+      ${comChat ? '<button type="button" class="item-acao item-chat" aria-label="Conversar" title="Conversar"><svg><use href="#i-chat"/></svg></button>' : ''}
+      <button type="button" class="item-acao item-editar" aria-label="Editar" title="Editar"><svg><use href="#i-editar"/></svg></button>
+      <button type="button" class="item-acao item-excluir" aria-label="Excluir" title="Excluir"><svg><use href="#i-lixo"/></svg></button>
+    </div>` : ''}
+  `;
+  li.querySelector('.item-nome').textContent = item.nome;
+  const meta = li.querySelector('.item-meta');
+  if (item.prioridade) { const s = document.createElement('span'); s.className = 'selo selo-alta'; s.textContent = 'prioridade'; meta.appendChild(s); }
+  if (item.categoria) { const s = document.createElement('span'); s.className = 'item-hora'; s.textContent = `${CATEGORIA_ICONE[item.categoria] || ''} ${item.categoria}`; meta.appendChild(s); }
+  if (item.horario) { const s = document.createElement('span'); s.className = 'item-hora'; s.textContent = item.horario; meta.appendChild(s); }
+  if (item.local) { const s = document.createElement('span'); s.className = 'item-hora'; s.textContent = item.local; meta.appendChild(s); }
+  if (!semCheck) {
+    li.querySelector('.marca-check').addEventListener('click', () => marcarConcluida(item.id, !feita, data));
+  }
+  if (comAcoes) {
+    li.querySelector('.item-editar').addEventListener('click', () => abrirEdicaoItem(item));
+    li.querySelector('.item-excluir').addEventListener('click', () => excluirItem(item.id));
+    if (comChat) li.querySelector('.item-chat').addEventListener('click', () => abrirChat(item));
+  }
+  return li;
+}
+
+// ---------- Render geral ----------
+function renderizarTudo() {
+  renderizarCabecalho();
+  renderizarFoco();
+  renderizarPrioridades();
+  renderizarAgenda();
+  renderizarTarefasBloco();
+  renderizarDepoisBloco();
+  renderizarMente();
+  renderizarAutocuidado();
+  renderizarHabitos('listaHabitos', 'habitosVazio', true);
+  renderizarAgua();
+  renderizarRefeicoes();
+  renderizarHumor();
+  renderizarLembretes();
+  renderizarConquistasHoje();
+  renderizarRotina();
+  montarCalendarioMini();
+  montarCalendarioGrande('calGrande', 'calGrandeTitulo', 'agenda');
+  montarCalendarioGrande('progMesCalendario', null, 'progresso');
+  renderizarProgressoConquistas();
+  renderizarHabitos('listaHabitosProgresso', 'habitosProgressoVazio', false);
+  if ($('diaDialog').open && diaDialogAtual) abrirDiaDialog(diaDialogAtual);
+}
+
+function renderizarCabecalho() {
   const hoje = new Date();
+  $('dataHoje').textContent = hoje.toLocaleDateString('pt-BR', { weekday: 'long', day: 'numeric', month: 'long' });
+  const h = hoje.getHours();
+  const nome = (dadosUsuario.perfil?.nome || '').split(' ')[0] || '';
+  $('saudacao').textContent = (h < 12 ? 'Bom dia' : h < 18 ? 'Boa tarde' : 'Boa noite') + (nome ? `, ${nome}` : '');
+  const concluiveis = itensConcluiveisDoDia(hojeISO());
+  const feitas = concluiveis.filter(i => estaConcluida(i.id)).length;
+  const pct = concluiveis.length ? Math.round((feitas / concluiveis.length) * 100) : 0;
+  $('anelProgresso').style.setProperty('--pct', pct);
+  $('progressoTexto').textContent = `${feitas}/${concluiveis.length}`;
+}
+
+// ---------- Foco de hoje ----------
+function renderizarFoco() {
+  const hoje = hojeISO();
+  const estado = (dadosUsuario.foco || {})[hoje] || { texto: '', feito: false };
+  if (document.activeElement !== $('focoInput')) $('focoInput').value = estado.texto || '';
+  $('focoLinha').classList.toggle('feita', !!estado.feito);
+}
+let focoDebounce;
+$('focoInput').addEventListener('input', () => {
+  clearTimeout(focoDebounce);
+  focoDebounce = setTimeout(async () => {
+    const hoje = hojeISO();
+    const mapa = { ...(dadosUsuario.foco || {}) };
+    mapa[hoje] = { ...(mapa[hoje] || {}), texto: $('focoInput').value };
+    await updateDoc(doc(db, 'usuarios', uid), { foco: mapa });
+  }, 600);
+});
+$('focoCheck').addEventListener('click', async () => {
+  const hoje = hojeISO();
+  const mapa = { ...(dadosUsuario.foco || {}) };
+  const atual = mapa[hoje] || { texto: '', feito: false };
+  mapa[hoje] = { ...atual, feito: !atual.feito };
+  await updateDoc(doc(db, 'usuarios', uid), { foco: mapa });
+});
+
+// ---------- Prioridades / Agenda / Tarefas / Fazer depois ----------
+function renderizarPrioridades() {
+  const hoje = hojeISO();
+  const itens = itensPorTipo('tarefa', hoje).filter(t => t.prioridade);
+  const ul = $('listaPrioridades'); ul.innerHTML = '';
+  itens.forEach(item => ul.appendChild(criarLinhaItem(item, { data: hoje })));
+  $('prioridadesVazio').hidden = itens.length > 0;
+}
+function renderizarAgenda() {
+  const itens = itensPorTipo('compromisso');
+  const ol = $('linhaAgenda'); ol.innerHTML = '';
+  itens.forEach(item => {
+    const li = document.createElement('li');
+    li.innerHTML = `<span class="lt-hora"></span><span class="lt-marcador"><span class="lt-ponto"></span><span class="lt-fio"></span></span><div class="lt-corpo"><p class="lt-titulo"></p><p class="lt-local"></p></div>`;
+    li.querySelector('.lt-hora').textContent = item.horario || '';
+    li.querySelector('.lt-titulo').textContent = item.nome;
+    const localEl = li.querySelector('.lt-local');
+    if (item.local) localEl.textContent = item.local; else localEl.remove();
+    ol.appendChild(li);
+  });
+  $('agendaVazio').hidden = itens.length > 0;
+}
+function renderizarTarefasBloco() {
+  const hoje = hojeISO();
+  const itens = itensPorTipo('tarefa', hoje);
+  const ul = $('listaTarefas'); ul.innerHTML = '';
+  itens.forEach(item => ul.appendChild(criarLinhaItem(item, { data: hoje, comAcoes: true, comChat: true })));
+  $('tarefasVazio').hidden = itens.length > 0;
+}
+function renderizarDepoisBloco() {
+  const itens = itensPorTipo('depois');
+  const el = $('listaDepois'); el.innerHTML = '';
+  itens.forEach(item => {
+    const chip = document.createElement('div'); chip.className = 'chip';
+    chip.innerHTML = `<svg><use href="#i-bandeja"/></svg><span></span><button type="button" aria-label="Remover"><svg><use href="#i-x"/></svg></button>`;
+    chip.querySelector('span').textContent = item.nome;
+    chip.querySelector('button').addEventListener('click', () => excluirItem(item.id));
+    el.appendChild(chip);
+  });
+  $('depoisVazio').hidden = itens.length > 0;
+}
+
+// ---------- Descarregar a mente ----------
+function renderizarMente() {
+  const el = $('menteTexto');
+  if (document.activeElement === el) return;
+  el.value = (dadosUsuario.mente || {})[hojeISO()] || '';
+}
+let menteDebounce;
+$('menteTexto').addEventListener('input', () => {
+  clearTimeout(menteDebounce);
+  menteDebounce = setTimeout(async () => {
+    const mapa = { ...(dadosUsuario.mente || {}) };
+    mapa[hojeISO()] = $('menteTexto').value;
+    await updateDoc(doc(db, 'usuarios', uid), { mente: mapa });
+  }, 600);
+});
+
+// ---------- Autocuidado ----------
+function renderizarAutocuidado() {
+  const el = $('listaAutocuidado'); el.innerHTML = '';
+  const hoje = hojeISO();
+  const itens = itensPorTipo('autocuidado');
+  itens.forEach(item => {
+    const feita = estaConcluida(item.id, hoje);
+    const div = document.createElement('div'); div.className = 'toque' + (feita ? ' feita' : '');
+    div.innerHTML = `
+      <svg><use href="${ICONE_SVG[item.icone] || '#i-coracao'}"/></svg>
+      <span class="toque-nome"></span>
+      <button type="button" class="toque-marca" aria-label="Marcar concluído"><svg><use href="#i-check"/></svg></button>
+      <button type="button" class="toque-lixo" aria-label="Excluir item de autocuidado"><svg><use href="#i-lixo"/></svg></button>
+    `;
+    div.querySelector('.toque-nome').textContent = item.nome;
+    div.querySelector('.toque-marca').addEventListener('click', () => marcarConcluida(item.id, !feita, hoje));
+    div.querySelector('.toque-lixo').addEventListener('click', () => excluirItem(item.id));
+    el.appendChild(div);
+  });
+  $('autocuidadoVazio').hidden = itens.length > 0;
+}
+
+// ---------- Hábitos ----------
+function renderizarHabitos(alvoId, vazioId, interativo) {
+  const el = $(alvoId); el.innerHTML = '';
+  const habitos = itensPorTipo('habito');
+  habitos.forEach(h => {
+    const linha = document.createElement('div'); linha.className = 'habito';
+    linha.innerHTML = `<span class="habito-nome"></span><div class="habito-dias"></div>`;
+    linha.querySelector('.habito-nome').textContent = h.nome;
+    const diasEl = linha.querySelector('.habito-dias');
+    const hoje = new Date();
+    for (let i = 6; i >= 0; i--) {
+      const d = new Date(hoje); d.setDate(d.getDate() - i);
+      const dataStr = dataISO(d);
+      const feito = estaConcluida(h.id, dataStr);
+      const ehHoje = i === 0;
+      const dot = document.createElement('button');
+      dot.type = 'button';
+      dot.className = 'habito-dia' + (feito ? ' feito' : '') + (ehHoje ? ' hoje-dia' : '');
+      dot.disabled = !ehHoje || !interativo;
+      dot.setAttribute('aria-label', `${h.nome} em ${dataStr}${feito ? ' (feito)' : ''}`);
+      if (ehHoje && interativo) dot.addEventListener('click', () => marcarConcluida(h.id, !feito, dataStr));
+      diasEl.appendChild(dot);
+    }
+    if (interativo) {
+      const lixo = document.createElement('button'); lixo.type = 'button'; lixo.className = 'habito-lixo';
+      lixo.setAttribute('aria-label', 'Excluir hábito');
+      lixo.innerHTML = '<svg><use href="#i-lixo"/></svg>';
+      lixo.addEventListener('click', () => excluirItem(h.id));
+      linha.appendChild(lixo);
+    }
+    el.appendChild(linha);
+  });
+  $(vazioId).hidden = habitos.length > 0;
+}
+
+// ---------- Água ----------
+function renderizarAgua() {
+  const el = $('linhaAgua'); el.innerHTML = '';
+  const copos = (dadosUsuario.agua || {})[hojeISO()] || 0;
+  for (let i = 1; i <= 8; i++) {
+    const b = document.createElement('button');
+    b.type = 'button';
+    b.className = 'gota' + (i <= copos ? ' cheia' : '');
+    b.setAttribute('aria-label', `Marcar ${i} copos de água`);
+    b.innerHTML = '<svg><use href="#i-gota"/></svg>';
+    b.addEventListener('click', () => definirAgua(copos === i ? i - 1 : i));
+    el.appendChild(b);
+  }
+  $('aguaTexto').textContent = copos;
+}
+async function definirAgua(n) {
+  const mapa = { ...(dadosUsuario.agua || {}) };
+  mapa[hojeISO()] = n;
+  await updateDoc(doc(db, 'usuarios', uid), { agua: mapa });
+}
+
+// ---------- Refeições ----------
+function renderizarRefeicoes() {
+  const mapa = (dadosUsuario.refeicoes || {})[hojeISO()] || {};
+  document.querySelectorAll('#refeicoes button').forEach(b => {
+    const chave = b.dataset.refeicao;
+    const marcada = !!mapa[chave];
+    b.classList.toggle('marcada', marcada);
+    b.textContent = marcada ? 'comi' : 'ainda não';
+    b.onclick = () => definirRefeicao(chave, !marcada);
+  });
+}
+async function definirRefeicao(chave, valor) {
+  const hoje = hojeISO();
+  const mapa = { ...(dadosUsuario.refeicoes || {}) };
+  mapa[hoje] = { ...(mapa[hoje] || {}), [chave]: valor };
+  await updateDoc(doc(db, 'usuarios', uid), { refeicoes: mapa });
+}
+
+// ---------- Humor e energia ----------
+function renderizarHumor() {
+  const estado = (dadosUsuario.humor || {})[hojeISO()] || {};
+  document.querySelectorAll('#grupoHumor .escala-btn').forEach(b => {
+    b.setAttribute('aria-pressed', String(b.dataset.valor === estado.humor));
+    b.onclick = () => definirHumor('humor', b.dataset.valor);
+  });
+  document.querySelectorAll('#grupoEnergia .escala-btn').forEach(b => {
+    b.setAttribute('aria-pressed', String(b.dataset.valor === estado.energia));
+    b.onclick = () => definirHumor('energia', b.dataset.valor);
+  });
+}
+async function definirHumor(campo, valor) {
+  const hoje = hojeISO();
+  const mapa = { ...(dadosUsuario.humor || {}) };
+  mapa[hoje] = { ...(mapa[hoje] || {}), [campo]: valor };
+  await updateDoc(doc(db, 'usuarios', uid), { humor: mapa });
+}
+
+// ---------- Não esquecer ----------
+function renderizarLembretes() {
+  const el = $('listaLembretes'); el.innerHTML = '';
+  const lembretes = dadosUsuario.lembretes || [];
+  lembretes.forEach(l => {
+    const chip = document.createElement('div'); chip.className = 'chip';
+    chip.innerHTML = `<svg><use href="#i-pin"/></svg><span></span><button type="button" aria-label="Remover lembrete"><svg><use href="#i-x"/></svg></button>`;
+    chip.querySelector('span').textContent = l.texto;
+    chip.querySelector('button').addEventListener('click', () => excluirLembrete(l.id));
+    el.appendChild(chip);
+  });
+}
+$('formLembrete').addEventListener('submit', async e => {
+  e.preventDefault();
+  const texto = $('campoLembrete').value.trim();
+  if (!texto) return;
+  const lembretes = [...(dadosUsuario.lembretes || []), { id: crypto.randomUUID(), texto, criadoEm: new Date().toISOString() }];
+  await updateDoc(doc(db, 'usuarios', uid), { lembretes });
+  $('campoLembrete').value = '';
+});
+async function excluirLembrete(id) {
+  const lembretes = (dadosUsuario.lembretes || []).filter(l => l.id !== id);
+  await updateDoc(doc(db, 'usuarios', uid), { lembretes });
+}
+
+// ---------- Conquistas do dia ----------
+function calcularConquistasAutomaticas() {
+  const hoje = hojeISO();
+  const badges = [];
+  const prioridades = itensPorTipo('tarefa').filter(t => t.prioridade);
+  if (prioridades.length > 0 && prioridades.every(t => estaConcluida(t.id))) badges.push('Todas as prioridades concluídas');
+  const autocuidados = itensPorTipo('autocuidado');
+  if (autocuidados.length > 0 && autocuidados.every(a => estaConcluida(a.id))) badges.push('Autocuidado em dia');
+  if (((dadosUsuario.agua || {})[hoje] || 0) >= 8) badges.push('Meta de água batida');
+  const foco = (dadosUsuario.foco || {})[hoje];
+  if (foco && foco.feito) badges.push('Foco do dia concluído');
+  return badges;
+}
+function renderizarConquistasHoje() {
+  const hoje = hojeISO();
+  const el = $('medalhas'); el.innerHTML = '';
+  const auto = calcularConquistasAutomaticas();
+  const manuais = (dadosUsuario.conquistasManuais || {})[hoje] || [];
+  auto.forEach(texto => {
+    const b = document.createElement('span'); b.className = 'medalha';
+    b.innerHTML = '<svg><use href="#i-pata"/></svg><span></span>';
+    b.querySelector('span').textContent = texto;
+    el.appendChild(b);
+  });
+  manuais.forEach(c => {
+    const b = document.createElement('span'); b.className = 'medalha';
+    b.innerHTML = '<svg><use href="#i-pata"/></svg><span></span><button type="button" aria-label="Remover conquista"><svg><use href="#i-x"/></svg></button>';
+    b.querySelector('span').textContent = c.texto;
+    b.querySelector('button').addEventListener('click', () => excluirConquistaManual(c.id));
+    el.appendChild(b);
+  });
+  $('conquistasVazio').hidden = (auto.length + manuais.length) > 0;
+}
+$('formConquista').addEventListener('submit', async e => {
+  e.preventDefault();
+  const texto = $('campoConquista').value.trim();
+  if (!texto) return;
+  const hoje = hojeISO();
+  const mapa = { ...(dadosUsuario.conquistasManuais || {}) };
+  mapa[hoje] = [...(mapa[hoje] || []), { id: crypto.randomUUID(), texto }];
+  await updateDoc(doc(db, 'usuarios', uid), { conquistasManuais: mapa });
+  $('campoConquista').value = '';
+});
+async function excluirConquistaManual(id) {
+  const hoje = hojeISO();
+  const mapa = { ...(dadosUsuario.conquistasManuais || {}) };
+  mapa[hoje] = (mapa[hoje] || []).filter(c => c.id !== id);
+  await updateDoc(doc(db, 'usuarios', uid), { conquistasManuais: mapa });
+}
+
+// ---------- Rotina (gestão de todos os itens) ----------
+function renderizarRotina() {
+  const grupos = {
+    tarefa: $('rotinaTarefas'), compromisso: $('rotinaCompromissos'), depois: $('rotinaDepois'),
+    habito: $('rotinaHabitos'), autocuidado: $('rotinaAutocuidado')
+  };
+  Object.values(grupos).forEach(ul => ul.innerHTML = '');
+  (dadosUsuario.itens || []).filter(i => i.ativa).forEach(item => {
+    const ul = grupos[item.tipo];
+    if (!ul) return;
+    const semCheck = item.tipo === 'compromisso' || item.tipo === 'depois';
+    const comChat = item.tipo === 'tarefa';
+    ul.appendChild(criarLinhaItem(item, { data: hojeISO(), comAcoes: true, comChat, semCheck }));
+  });
+}
+
+// ---------- Calendários ----------
+function montarCalendarioMini() {
+  const el = $('miniCalendario'); el.innerHTML = '';
+  const hoje = new Date();
+  const cab = document.createElement('div'); cab.className = 'mini-cal-cab';
+  cab.innerHTML = '<span></span>';
+  cab.querySelector('span').textContent = hoje.toLocaleDateString('pt-BR', { month: 'short' });
+  el.appendChild(cab);
+  const grade = document.createElement('div'); grade.className = 'mini-cal-grade';
   const ano = hoje.getFullYear(), mes = hoje.getMonth();
-  const primeiroDia = new Date(ano, mes, 1);
+  const primeiro = new Date(ano, mes, 1);
   const diasNoMes = new Date(ano, mes + 1, 0).getDate();
-  const el = $('mesCalendario');
-  el.innerHTML = '';
-  for (let i = 0; i < primeiroDia.getDay(); i++) {
+  for (let i = 0; i < primeiro.getDay(); i++) grade.appendChild(document.createElement('span'));
+  for (let d = 1; d <= diasNoMes; d++) {
+    const dataStr = dataISO(new Date(ano, mes, d));
+    const span = document.createElement('span');
+    span.className = 'dia' + (dataStr === hojeISO() ? ' hoje' : '') + (diaTemAgenda(dataStr) ? ' tem-item' : '');
+    span.textContent = d;
+    grade.appendChild(span);
+  }
+  el.appendChild(grade);
+}
+
+function montarCalendarioGrande(alvoId, tituloId, modo) {
+  const el = $(alvoId); el.innerHTML = '';
+  const hoje = new Date();
+  if (tituloId) $(tituloId).textContent = hoje.toLocaleDateString('pt-BR', { month: 'long', year: 'numeric' });
+  const ano = hoje.getFullYear(), mes = hoje.getMonth();
+  const primeiro = new Date(ano, mes, 1);
+  const diasNoMes = new Date(ano, mes + 1, 0).getDate();
+  for (let i = 0; i < primeiro.getDay(); i++) {
     const vazio = document.createElement('span');
-    vazio.className = 'mes-dia mes-dia-vazio';
+    vazio.className = 'dia'; vazio.style.background = 'transparent';
     el.appendChild(vazio);
   }
-  let streakAtual = 0, maiorStreak = 0, diasCompletos = 0, diasComTarefa = 0;
   for (let d = 1; d <= diasNoMes; d++) {
     const dataObj = new Date(ano, mes, d);
     const dataStr = dataISO(dataObj);
-    const completo = dataObj <= hoje ? diaCompleto(dataStr) : null;
-    const span = document.createElement('span');
-    span.className = 'mes-dia' + (completo === true ? ' completo' : completo === false ? ' incompleto' : ' sem-tarefa');
-    if (dataStr === hojeISO()) span.classList.add('hoje');
-    span.textContent = d;
-    el.appendChild(span);
-    if (dataObj <= hoje) {
-      if (completo !== null) diasComTarefa++;
-      if (completo === true) { diasCompletos++; streakAtual++; maiorStreak = Math.max(maiorStreak, streakAtual); }
-      else if (completo === false) { streakAtual = 0; }
+    const btn = document.createElement('button');
+    btn.type = 'button';
+    let classe = 'dia clicavel';
+    if (dataStr === hojeISO()) classe += ' hoje';
+    if (modo === 'progresso' && dataObj <= hoje) {
+      const completo = diaCompleto(dataStr);
+      if (completo === true) classe += ' completo';
+      else if (completo === false) classe += ' incompleto';
+      else if (diaTemAgenda(dataStr)) classe += ' tem-item';
+    } else if (diaTemAgenda(dataStr)) {
+      classe += ' tem-item';
+    }
+    btn.className = classe;
+    btn.textContent = d;
+    btn.addEventListener('click', () => abrirDiaDialog(dataStr));
+    el.appendChild(btn);
+  }
+}
+
+function abrirDiaDialog(dataStr) {
+  diaDialogAtual = dataStr;
+  $('diaDialogTitulo').textContent = new Date(dataStr + 'T00:00:00').toLocaleDateString('pt-BR', { weekday: 'long', day: 'numeric', month: 'long' });
+  const ul = $('listaDiaDialog'); ul.innerHTML = '';
+  const itens = itensConcluiveisDoDia(dataStr).sort((a, b) => (a.horario || '').localeCompare(b.horario || ''));
+  $('diaDialogVazio').hidden = itens.length > 0;
+  itens.forEach(item => ul.appendChild(criarLinhaItem(item, { data: dataStr })));
+  if (!$('diaDialog').open) $('diaDialog').showModal();
+}
+$('fecharDiaDialog').addEventListener('click', () => { $('diaDialog').close(); diaDialogAtual = null; });
+
+// ---------- Diálogo de novo item / editar item ----------
+function atualizarCamposTipo() {
+  const tipo = $('campoTipo').value;
+  $('grupoCategoria').hidden = !(tipo === 'tarefa' || tipo === 'depois');
+  $('grupoHorario').hidden = !(tipo === 'tarefa' || tipo === 'compromisso');
+  $('grupoLocal').hidden = tipo !== 'compromisso';
+  $('grupoDias').hidden = !(tipo === 'tarefa' || tipo === 'compromisso');
+  $('grupoIcone').hidden = tipo !== 'autocuidado';
+  $('grupoPrioridade').hidden = tipo !== 'tarefa';
+  $('campoHorario').required = (tipo === 'tarefa' || tipo === 'compromisso');
+}
+$('campoTipo').addEventListener('change', atualizarCamposTipo);
+
+function abrirNovoItem(tipo) {
+  itemEmEdicao = null;
+  $('itemForm').reset();
+  $('campoTipo').value = tipo;
+  atualizarCamposTipo();
+  $('itemDialogTitulo').textContent = 'Novo item';
+  $('excluirItem').hidden = true;
+  $('prioridadeAviso').hidden = true;
+  $('itemDialog').showModal();
+}
+function abrirEdicaoItem(item) {
+  itemEmEdicao = item;
+  $('campoTipo').value = item.tipo;
+  atualizarCamposTipo();
+  $('campoNome').value = item.nome || '';
+  $('campoCategoria').value = item.categoria || 'higiene';
+  $('campoHorario').value = item.horario || '';
+  $('campoLocal').value = item.local || '';
+  const diasAtivos = new Set(item.dias && item.dias.length ? item.dias : [0,1,2,3,4,5,6]);
+  document.querySelectorAll('#diasGrade input').forEach(i => { i.checked = diasAtivos.has(Number(i.value)); });
+  document.querySelectorAll('#iconeEscolha input').forEach(i => { i.checked = i.value === (item.icone || 'comprimido'); });
+  $('campoPrioridade').checked = !!item.prioridade;
+  $('itemDialogTitulo').textContent = 'Editar item';
+  $('excluirItem').hidden = false;
+  $('prioridadeAviso').hidden = true;
+  $('itemDialog').showModal();
+}
+
+$('addTarefaBtn').addEventListener('click', () => abrirNovoItem('tarefa'));
+$('addDepoisBtn').addEventListener('click', () => abrirNovoItem('depois'));
+$('addAutocuidadoBtn').addEventListener('click', () => abrirNovoItem('autocuidado'));
+$('addHabitoBtn').addEventListener('click', () => abrirNovoItem('habito'));
+$('novoItemBtnRotina').addEventListener('click', () => abrirNovoItem('tarefa'));
+$('cancelarItem').addEventListener('click', () => { $('itemDialog').close(); itemEmEdicao = null; });
+$('excluirItem').addEventListener('click', async () => {
+  if (!itemEmEdicao) return;
+  if (!confirm('Excluir este item? Essa ação não pode ser desfeita.')) return;
+  const itens = (dadosUsuario.itens || []).filter(i => i.id !== itemEmEdicao.id);
+  await updateDoc(doc(db, 'usuarios', uid), { itens });
+  $('itemDialog').close();
+  itemEmEdicao = null;
+});
+
+$('itemForm').addEventListener('submit', async e => {
+  const tipo = $('campoTipo').value;
+  const prioridade = tipo === 'tarefa' && $('campoPrioridade').checked;
+  if (prioridade) {
+    const outras = (dadosUsuario.itens || []).filter(i =>
+      i.tipo === 'tarefa' && i.ativa && i.prioridade && (!itemEmEdicao || i.id !== itemEmEdicao.id));
+    if (outras.length >= 3) {
+      e.preventDefault();
+      $('prioridadeAviso').hidden = false;
+      return;
     }
   }
-  renderizarConquistas(maiorStreak, diasCompletos, diasComTarefa);
-}
+  $('prioridadeAviso').hidden = true;
+  const dias = [...document.querySelectorAll('#diasGrade input:checked')].map(i => Number(i.value));
+  const icone = document.querySelector('#iconeEscolha input:checked')?.value || 'comprimido';
+  const campos = { tipo, nome: $('campoNome').value.trim() };
+  if (tipo === 'tarefa' || tipo === 'depois') campos.categoria = $('campoCategoria').value;
+  if (tipo === 'tarefa' || tipo === 'compromisso') { campos.horario = $('campoHorario').value; campos.dias = dias; }
+  if (tipo === 'compromisso') campos.local = $('campoLocal').value.trim();
+  if (tipo === 'autocuidado') campos.icone = icone;
+  if (tipo === 'tarefa') campos.prioridade = prioridade;
 
-function renderizarConquistas(maiorStreak, diasCompletos, diasComTarefa) {
-  const conquistas = [];
-  if (diasCompletos >= 1) conquistas.push({ icone: '🎯', nome: 'Primeiro dia completo' });
-  if (maiorStreak >= 3) conquistas.push({ icone: '🔥', nome: 'Sequência de 3 dias' });
-  if (maiorStreak >= 7) conquistas.push({ icone: '🔥', nome: 'Sequência de 7 dias' });
-  if (diasComTarefa > 0 && diasCompletos === diasComTarefa) conquistas.push({ icone: '🌟', nome: 'Mês perfeito até agora' });
-  const el = $('mesConquistas');
-  el.innerHTML = '';
-  if (conquistas.length === 0) {
-    el.innerHTML = '<p class="mes-vazio">Ainda sem conquistas este mês — comece marcando suas tarefas!</p>';
+  let itens;
+  if (itemEmEdicao) {
+    itens = (dadosUsuario.itens || []).map(i => i.id === itemEmEdicao.id ? { ...i, ...campos } : i);
+  } else {
+    itens = [...(dadosUsuario.itens || []), {
+      id: crypto.randomUUID(), ...campos, ativa: true,
+      ordem: (dadosUsuario.itens || []).length, criadoEm: new Date().toISOString()
+    }];
+  }
+  await updateDoc(doc(db, 'usuarios', uid), { itens });
+  itemEmEdicao = null;
+});
+
+// ---------- Progresso (mês) ----------
+function renderizarProgressoConquistas() {
+  const hoje = new Date();
+  const ano = hoje.getFullYear(), mes = hoje.getMonth();
+  const diasNoMes = new Date(ano, mes + 1, 0).getDate();
+  let streakAtual = 0, maiorStreak = 0, diasCompletos = 0, diasComItem = 0;
+  for (let d = 1; d <= diasNoMes; d++) {
+    const dataObj = new Date(ano, mes, d);
+    if (dataObj > hoje) break;
+    const dataStr = dataISO(dataObj);
+    const completo = diaCompleto(dataStr);
+    if (completo !== null) diasComItem++;
+    if (completo === true) { diasCompletos++; streakAtual++; maiorStreak = Math.max(maiorStreak, streakAtual); }
+    else if (completo === false) { streakAtual = 0; }
+  }
+  const badges = [];
+  if (diasCompletos >= 1) badges.push('Primeiro dia completo');
+  if (maiorStreak >= 3) badges.push('Sequência de 3 dias');
+  if (maiorStreak >= 7) badges.push('Sequência de 7 dias');
+  if (diasComItem > 0 && diasCompletos === diasComItem) badges.push('Mês perfeito até agora');
+  const el = $('progMesConquistas'); el.innerHTML = '';
+  if (badges.length === 0) {
+    const p = document.createElement('p'); p.className = 'bloco-sub';
+    p.textContent = 'Ainda sem conquistas este mês — comece marcando suas tarefas.';
+    el.appendChild(p);
     return;
   }
-  conquistas.forEach(c => {
-    const badge = document.createElement('span');
-    badge.className = 'conquista-badge';
-    badge.innerHTML = `<span class="conquista-icone">${c.icone}</span> ${c.nome}`;
-    el.appendChild(badge);
+  badges.forEach(texto => {
+    const span = document.createElement('span'); span.className = 'medalha';
+    span.innerHTML = '<svg><use href="#i-pata"/></svg><span></span>';
+    span.querySelector('span').textContent = texto;
+    el.appendChild(span);
   });
 }
 
-async function marcarConcluida(taskId, valor) {
-  const data = hojeISO();
-  const mapa = { ...(dadosUsuario.concluidas || {}) };
-  const lista = new Set(mapa[data] || []);
-  if (valor) lista.add(taskId); else lista.delete(taskId);
-  mapa[data] = [...lista];
-  await updateDoc(doc(db, 'usuarios', uid), { concluidas: mapa });
-}
-
-// ---------- Nova tarefa / edição ----------
-let tarefaEmEdicao = null;
-
-function abrirFormNovaTarefa() {
-  tarefaEmEdicao = null;
-  $('tarefaForm').reset();
-  $('tarefaDialogTitulo').textContent = 'Nova tarefa';
-  $('tarefaDialog').showModal();
-}
-
-function abrirFormEdicaoTarefa(tarefa) {
-  tarefaEmEdicao = tarefa;
-  $('campoNome').value = tarefa.nome;
-  $('campoCategoria').value = tarefa.categoria;
-  $('campoHorario').value = tarefa.horario;
-  const diasAtivos = new Set(tarefa.dias && tarefa.dias.length ? tarefa.dias : [0,1,2,3,4,5,6]);
-  document.querySelectorAll('#diasGrade input').forEach(input => {
-    input.checked = diasAtivos.has(Number(input.value));
+// ---------- Reordenar blocos (arrastar + teclado) ----------
+(function ligarReordenacao() {
+  const painel = $('painel');
+  let arrastando = null;
+  function reflow(el) { void el.offsetWidth; }
+  painel.querySelectorAll('.bloco').forEach(bloco => {
+    bloco.addEventListener('dragstart', () => { arrastando = bloco; bloco.classList.add('arrastando'); });
+    bloco.addEventListener('dragend', () => { bloco.classList.remove('arrastando'); arrastando = null; salvarOrdemBlocos(); });
+    bloco.addEventListener('dragover', e => {
+      e.preventDefault();
+      if (!arrastando || arrastando === bloco) return;
+      const depois = [...painel.children].indexOf(bloco) > [...painel.children].indexOf(arrastando);
+      painel.insertBefore(arrastando, depois ? bloco.nextSibling : bloco);
+    });
+    const alca = bloco.querySelector('.arrastar-alca');
+    if (alca) {
+      alca.addEventListener('keydown', e => {
+        if (e.key !== 'ArrowUp' && e.key !== 'ArrowDown') return;
+        e.preventDefault();
+        const irmao = e.key === 'ArrowUp' ? bloco.previousElementSibling : bloco.nextElementSibling;
+        if (!irmao) return;
+        if (e.key === 'ArrowUp') painel.insertBefore(bloco, irmao); else painel.insertBefore(irmao, bloco);
+        alca.focus();
+        salvarOrdemBlocos();
+      });
+    }
   });
-  $('tarefaDialogTitulo').textContent = 'Editar tarefa';
-  $('tarefaDialog').showModal();
-}
-
-$('novaTarefaBtn').addEventListener('click', () => { fecharMenu(); abrirFormNovaTarefa(); });
-$('listaVaziaBtn').addEventListener('click', () => abrirFormNovaTarefa());
-$('cancelarTarefa').addEventListener('click', () => { $('tarefaDialog').close(); tarefaEmEdicao = null; });
-
-$('tarefaForm').addEventListener('submit', async (e) => {
-  const dias = [...document.querySelectorAll('#diasGrade input:checked')].map(i => Number(i.value));
-  const campos = {
-    nome: $('campoNome').value.trim(),
-    categoria: $('campoCategoria').value,
-    horario: $('campoHorario').value,
-    dias
-  };
-  let tarefas;
-  if (tarefaEmEdicao) {
-    tarefas = (dadosUsuario.tarefas || []).map(t => t.id === tarefaEmEdicao.id ? { ...t, ...campos } : t);
-  } else {
-    const nova = {
-      id: crypto.randomUUID(),
-      ...campos,
-      ativa: true,
-      ordem: (dadosUsuario.tarefas || []).length,
-      criadoEm: new Date().toISOString()
-    };
-    tarefas = [...(dadosUsuario.tarefas || []), nova];
+  function salvarOrdemBlocos() {
+    const ordem = [...painel.children].map(b => b.dataset.id);
+    localStorage.setItem('rotina-ordem-blocos', JSON.stringify(ordem));
   }
-  await updateDoc(doc(db, 'usuarios', uid), { tarefas });
-  $('tarefaForm').reset();
-  tarefaEmEdicao = null;
-});
-
-async function excluirTarefa(id) {
-  if (!confirm('Excluir esta tarefa? Essa ação não pode ser desfeita.')) return;
-  const tarefas = (dadosUsuario.tarefas || []).filter(t => t.id !== id);
-  await updateDoc(doc(db, 'usuarios', uid), { tarefas });
-}
-
-// ---------- Marcar dia anterior ----------
-$('diaAnteriorBtn').addEventListener('click', () => {
-  fecharMenu();
-  const ontem = new Date();
-  ontem.setDate(ontem.getDate() - 1);
-  const ontemISO = dataISO(ontem);
-  $('campoDataAnterior').value = ontemISO;
-  $('campoDataAnterior').max = ontemISO;
-  renderizarDiaAnterior();
-  $('diaAnteriorDialog').showModal();
-});
-$('campoDataAnterior').addEventListener('change', renderizarDiaAnterior);
-$('fecharDiaAnterior').addEventListener('click', () => $('diaAnteriorDialog').close());
-
-function renderizarDiaAnterior() {
-  const data = $('campoDataAnterior').value;
-  const tarefas = data ? tarefasDoDia(data) : [];
-  const ul = $('listaDiaAnterior');
-  ul.innerHTML = '';
-  $('diaAnteriorVazio').hidden = tarefas.length > 0;
-  const concluidasDoDia = (dadosUsuario.concluidas || {})[data] || [];
-  tarefas.forEach(t => {
-    const feita = concluidasDoDia.includes(t.id);
-    const li = document.createElement('li');
-    li.className = 'tarefa-item' + (feita ? ' concluida' : '');
-    li.innerHTML = `
-      <button class="tarefa-check" aria-label="Marcar concluída">${feita ? '✓' : ''}</button>
-      <div class="tarefa-info">
-        <p class="tarefa-nome"></p>
-        <p class="tarefa-meta"></p>
-      </div>
-    `;
-    li.querySelector('.tarefa-nome').textContent = t.nome;
-    li.querySelector('.tarefa-meta').textContent = t.horario;
-    li.querySelector('.tarefa-check').addEventListener('click', () => marcarConcluidaData(t.id, data, !feita));
-    ul.appendChild(li);
-  });
-}
-
-async function marcarConcluidaData(taskId, data, valor) {
-  const mapa = { ...(dadosUsuario.concluidas || {}) };
-  const lista = new Set(mapa[data] || []);
-  if (valor) lista.add(taskId); else lista.delete(taskId);
-  mapa[data] = [...lista];
-  await updateDoc(doc(db, 'usuarios', uid), { concluidas: mapa });
-}
-
-// ---------- Menu ----------
-$('menuBtn').addEventListener('click', () => {
-  const aberto = !$('menuPainel').hidden;
-  $('menuPainel').hidden = aberto;
-  $('menuBtn').setAttribute('aria-expanded', String(!aberto));
-});
-function fecharMenu() { $('menuPainel').hidden = true; }
+  const ordemSalva = localStorage.getItem('rotina-ordem-blocos');
+  if (ordemSalva) {
+    try {
+      JSON.parse(ordemSalva).forEach(id => {
+        const bloco = painel.querySelector(`[data-id="${id}"]`);
+        if (bloco) painel.appendChild(bloco);
+      });
+    } catch (e) {}
+  }
+})();
 
 // ---------- Notificações (FCM) ----------
-$('notifBtn').addEventListener('click', async () => {
-  fecharMenu();
-  await ativarNotificacoes();
-});
+$('notifBtn').addEventListener('click', async () => { await ativarNotificacoes(); });
 
 async function ativarNotificacoes() {
   if (!(await isSupported())) {
@@ -431,7 +798,6 @@ function mostrarAviso(texto) {
   setTimeout(() => { el.hidden = true; }, 6000);
 }
 
-// mensagem chegando com o app aberto em primeiro plano
 isSupported().then(ok => {
   if (!ok) return;
   const messaging = getMessaging(app);
@@ -446,23 +812,23 @@ if ('serviceWorker' in navigator) {
 }
 
 // ---------- Chat de apoio ----------
-function abrirChat(tarefa) {
-  tarefaAtualChat = tarefa;
-  $('chatTitulo').textContent = tarefa.nome;
+function abrirChat(item) {
+  itemAtualChat = item;
+  $('chatTitulo').textContent = item.nome;
   $('chatMensagens').innerHTML = '';
-  adicionarMensagem('ia', `Sobre "${tarefa.nome}": o que está travando agora? Pode ser cansaço, não saber por onde começar, ou só falta de vontade mesmo — qualquer motivo vale.`);
+  adicionarMensagem('ia', `Sobre "${item.nome}": o que está travando agora? Pode ser cansaço, não saber por onde começar, ou só falta de vontade mesmo — qualquer motivo vale.`);
   $('chatDialog').showModal();
 }
 $('fecharChat').addEventListener('click', () => $('chatDialog').close());
 
-$('chatForm').addEventListener('submit', async (e) => {
+$('chatForm').addEventListener('submit', async e => {
   e.preventDefault();
   const texto = $('chatInput').value.trim();
   if (!texto) return;
   adicionarMensagem('eu', texto);
   $('chatInput').value = '';
   try {
-    const resposta = await pedirAjudaIA(tarefaAtualChat, texto);
+    const resposta = await pedirAjudaIA(itemAtualChat, texto);
     adicionarMensagem('ia', resposta);
   } catch (err) {
     adicionarMensagem('ia', 'Não consegui responder agora (chat ainda não configurado — veja README.md, seção "Fase 2").');
@@ -477,11 +843,11 @@ function adicionarMensagem(quem, texto) {
   $('chatMensagens').scrollTop = $('chatMensagens').scrollHeight;
 }
 
-async function pedirAjudaIA(tarefa, mensagem) {
+async function pedirAjudaIA(item, mensagem) {
   const resp = await fetch(WORKER_CHAT_URL, {
     method: 'POST',
     headers: { 'Content-Type': 'application/json' },
-    body: JSON.stringify({ tarefa: tarefa.nome, categoria: tarefa.categoria, mensagem })
+    body: JSON.stringify({ tarefa: item.nome, categoria: item.categoria || item.tipo, mensagem })
   });
   if (!resp.ok) throw new Error('falha no chat');
   const data = await resp.json();

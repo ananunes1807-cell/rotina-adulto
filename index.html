@@ -3,22 +3,56 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
-<meta name="theme-color" content="#4C5B43">
+<meta name="theme-color" content="#FBF7F2">
 <title>Rotina — hoje</title>
 <link rel="manifest" href="./manifest.webmanifest">
 <link rel="icon" href="./icon-192.png">
 <link rel="apple-touch-icon" href="./icon-192.png">
-<link rel="preconnect" href="https://fonts.googleapis.com">
-<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-<link href="https://fonts.googleapis.com/css2?family=Fraunces:opsz,wght@9..144,500;9..144,600&family=Inter:wght@400;500;600;700&family=IBM+Plex+Mono:wght@500&display=swap" rel="stylesheet">
-<link rel="stylesheet" href="./styles.css?v=4">
+<link rel="stylesheet" href="./styles.css?v=6">
 </head>
 <body>
 
+<svg style="display:none" aria-hidden="true">
+  <symbol id="i-gato" viewBox="0 0 20 20"><path d="M5 8 4 3l3.2 2.6a9 9 0 0 1 5.6 0L16 3l-1 5" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"/><circle cx="10" cy="11" r="6" fill="none" stroke="currentColor" stroke-width="1.5"/><path d="M8 12c.5.6 1.5.6 2 0M13.2 9.3l.1.1M6.7 9.3l-.1.1" stroke="currentColor" stroke-width="1.4" stroke-linecap="round"/></symbol>
+  <symbol id="i-sol" viewBox="0 0 20 20"><circle cx="10" cy="10" r="3.6" fill="none" stroke="currentColor" stroke-width="1.5"/><g stroke="currentColor" stroke-width="1.5" stroke-linecap="round"><path d="M10 2.5v2M10 15.5v2M17.5 10h-2M4.5 10h-2M15.3 4.7l-1.4 1.4M6.1 13.9l-1.4 1.4M15.3 15.3l-1.4-1.4M6.1 6.1 4.7 4.7"/></g></symbol>
+  <symbol id="i-lua" viewBox="0 0 20 20"><path d="M16 12.5A6.5 6.5 0 0 1 7.5 4 6.5 6.5 0 1 0 16 12.5Z" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linejoin="round"/></symbol>
+  <symbol id="i-alvo" viewBox="0 0 20 20"><circle cx="10" cy="10" r="7" fill="none" stroke="currentColor" stroke-width="1.4"/><circle cx="10" cy="10" r="4" fill="none" stroke="currentColor" stroke-width="1.4"/><circle cx="10" cy="10" r="1.2" fill="currentColor"/></symbol>
+  <symbol id="i-bandeira" viewBox="0 0 20 20"><path d="M5 17V3M5 3.5h9l-2.3 3L14 9.5H5" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linejoin="round" stroke-linecap="round"/></symbol>
+  <symbol id="i-relogio" viewBox="0 0 20 20"><circle cx="10" cy="10.5" r="7" fill="none" stroke="currentColor" stroke-width="1.4"/><path d="M10 6.5V11l3 1.8" fill="none" stroke="currentColor" stroke-width="1.4" stroke-linecap="round" stroke-linejoin="round"/><path d="M7.5 2.5h5" stroke="currentColor" stroke-width="1.4" stroke-linecap="round"/></symbol>
+  <symbol id="i-lista" viewBox="0 0 20 20"><g stroke="currentColor" stroke-width="1.5" stroke-linecap="round"><rect x="3.2" y="4" width="3" height="3" rx="1" fill="none"/><path d="M8.5 5.5h8.3"/><rect x="3.2" y="12" width="3" height="3" rx="1" fill="none"/><path d="M8.5 13.5h8.3"/></g></symbol>
+  <symbol id="i-bandeja" viewBox="0 0 20 20"><path d="M3 8 5 3h10l2 5M3 8v7.5a1 1 0 0 0 1 1h12a1 1 0 0 0 1-1V8M3 8h14M7.5 11h5" fill="none" stroke="currentColor" stroke-width="1.4" stroke-linecap="round" stroke-linejoin="round"/></symbol>
+  <symbol id="i-nuvem" viewBox="0 0 20 20"><path d="M6.2 14.5a3.4 3.4 0 0 1-.4-6.8 4.3 4.3 0 0 1 8.3-1.4 3.3 3.3 0 0 1-.4 8.2H6.2Z" fill="none" stroke="currentColor" stroke-width="1.4" stroke-linejoin="round"/></symbol>
+  <symbol id="i-coracao" viewBox="0 0 20 20"><path d="M10 16.3s-6.2-3.8-6.2-8.2a3.6 3.6 0 0 1 6.2-2.5 3.6 3.6 0 0 1 6.2 2.5c0 4.4-6.2 8.2-6.2 8.2Z" fill="none" stroke="currentColor" stroke-width="1.4" stroke-linejoin="round"/></symbol>
+  <symbol id="i-repetir" viewBox="0 0 20 20"><path d="M15.5 6.5A6 6 0 0 0 5 9M4.5 13.5A6 6 0 0 0 15 11" fill="none" stroke="currentColor" stroke-width="1.4" stroke-linecap="round"/><path d="M15.5 3v3.5H12M4.5 17v-3.5H8" fill="none" stroke="currentColor" stroke-width="1.4" stroke-linecap="round" stroke-linejoin="round"/></symbol>
+  <symbol id="i-gota" viewBox="0 0 20 20"><path d="M10 2.8s5 6 5 9.6a5 5 0 0 1-10 0c0-3.6 5-9.6 5-9.6Z" fill="currentColor" stroke="none"/></symbol>
+  <symbol id="i-tigela" viewBox="0 0 20 20"><path d="M3 9.5h14a7 4.5 0 0 1-14 0Z" fill="none" stroke="currentColor" stroke-width="1.4" stroke-linejoin="round"/><path d="M6 9V6.3M10 8V4.5M14 9V6.3" stroke="currentColor" stroke-width="1.2" stroke-linecap="round"/></symbol>
+  <symbol id="i-pin" viewBox="0 0 20 20"><path d="M11.8 3.2 16.8 8.2l-2.2 2.2-3-.4-3.2 3.2-1-1L10.6 9l-.4-3Z" fill="none" stroke="currentColor" stroke-width="1.4" stroke-linejoin="round" stroke-linecap="round"/><path d="M7.4 12.6 3.5 16.5" stroke="currentColor" stroke-width="1.4" stroke-linecap="round"/></symbol>
+  <symbol id="i-pata" viewBox="0 0 20 20"><ellipse cx="10" cy="12.5" rx="4.2" ry="3.4" fill="currentColor"/><ellipse cx="4.8" cy="8.2" rx="1.7" ry="2.1" fill="currentColor"/><ellipse cx="9" cy="5.8" rx="1.7" ry="2.2" fill="currentColor"/><ellipse cx="13.4" cy="6.3" rx="1.7" ry="2.2" fill="currentColor"/><ellipse cx="16.2" cy="9.6" rx="1.5" ry="1.9" fill="currentColor"/></symbol>
+  <symbol id="i-alca" viewBox="0 0 20 20"><g fill="currentColor"><circle cx="7" cy="5" r="1.2"/><circle cx="13" cy="5" r="1.2"/><circle cx="7" cy="10" r="1.2"/><circle cx="13" cy="10" r="1.2"/><circle cx="7" cy="15" r="1.2"/><circle cx="13" cy="15" r="1.2"/></g></symbol>
+  <symbol id="i-calma" viewBox="0 0 20 20"><path d="M3.5 11c1.5-3.5 3-3.5 4-1.5s2.5 2 4-1.5S15 6 16.5 9" fill="none" stroke="currentColor" stroke-width="1.4" stroke-linecap="round" stroke-linejoin="round"/></symbol>
+  <symbol id="i-ok" viewBox="0 0 20 20"><path d="M4 10h12" stroke="currentColor" stroke-width="1.6" stroke-linecap="round"/></symbol>
+  <symbol id="i-agitada" viewBox="0 0 20 20"><path d="M3.5 13 7 7l3 5 3-6 3.5 7" fill="none" stroke="currentColor" stroke-width="1.4" stroke-linecap="round" stroke-linejoin="round"/></symbol>
+  <symbol id="i-cansada" viewBox="0 0 20 20"><path d="M4 12.5c2-1.5 3-1.5 5 0M11 12.5c2-1.5 3-1.5 5 0" fill="none" stroke="currentColor" stroke-width="1.4" stroke-linecap="round"/></symbol>
+  <symbol id="i-pilha1" viewBox="0 0 20 20"><rect x="3" y="8" width="14" height="6" rx="1.8" fill="none" stroke="currentColor" stroke-width="1.3"/><rect x="4.5" y="9.5" width="3" height="3" rx=".6" fill="currentColor"/></symbol>
+  <symbol id="i-pilha2" viewBox="0 0 20 20"><rect x="3" y="8" width="14" height="6" rx="1.8" fill="none" stroke="currentColor" stroke-width="1.3"/><rect x="4.5" y="9.5" width="8" height="3" rx=".6" fill="currentColor"/></symbol>
+  <symbol id="i-pilha3" viewBox="0 0 20 20"><rect x="3" y="8" width="14" height="6" rx="1.8" fill="none" stroke="currentColor" stroke-width="1.3"/><rect x="4.5" y="9.5" width="11.2" height="3" rx=".6" fill="currentColor"/></symbol>
+  <symbol id="i-comprimido" viewBox="0 0 20 20"><rect x="3" y="8.3" width="14" height="5.4" rx="2.7" transform="rotate(-30 10 11)" fill="none" stroke="currentColor" stroke-width="1.4"/><path d="M9 8.8 11 13.2" stroke="currentColor" stroke-width="1.2"/></symbol>
+  <symbol id="i-calendario" viewBox="0 0 20 20"><rect x="3" y="4.5" width="14" height="12" rx="2" fill="none" stroke="currentColor" stroke-width="1.4"/><path d="M3 8h14M6.5 3v3M13.5 3v3" stroke="currentColor" stroke-width="1.4" stroke-linecap="round"/></symbol>
+  <symbol id="i-grafico" viewBox="0 0 20 20"><g stroke="currentColor" stroke-width="1.6" stroke-linecap="round"><path d="M5 15V10M10 15V6M15 15v-4"/></g></symbol>
+  <symbol id="i-config" viewBox="0 0 20 20"><circle cx="10" cy="10" r="2.6" fill="none" stroke="currentColor" stroke-width="1.4"/><path d="M10 3v2.1M10 14.9V17M17 10h-2.1M5.1 10H3M14.9 5.1l-1.5 1.5M6.6 13.4l-1.5 1.5M14.9 14.9l-1.5-1.5M6.6 6.6 5.1 5.1" stroke="currentColor" stroke-width="1.4" stroke-linecap="round"/></symbol>
+  <symbol id="i-check" viewBox="0 0 20 20"><path d="M4 10.5l3.6 3.6L16 5.5" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/></symbol>
+  <symbol id="i-mais" viewBox="0 0 20 20"><path d="M10 4v12M4 10h12" stroke="currentColor" stroke-width="1.6" stroke-linecap="round"/></symbol>
+  <symbol id="i-lixo" viewBox="0 0 20 20"><path d="M4 6h12M8 6V4.3a1 1 0 0 1 1-1h2a1 1 0 0 1 1 1V6M6 6l.6 9.4a1 1 0 0 0 1 .9h4.8a1 1 0 0 0 1-.9L14 6" fill="none" stroke="currentColor" stroke-width="1.4" stroke-linecap="round" stroke-linejoin="round"/></symbol>
+  <symbol id="i-editar" viewBox="0 0 20 20"><path d="M12.3 3.7 16 7.4 6.8 16.6 3 17l.4-3.8L12.3 3.7Z" fill="none" stroke="currentColor" stroke-width="1.4" stroke-linejoin="round" stroke-linecap="round"/></symbol>
+  <symbol id="i-chat" viewBox="0 0 20 20"><path d="M3.5 5.5A2 2 0 0 1 5.5 3.5h9A2 2 0 0 1 16.5 5.5v6a2 2 0 0 1-2 2H9l-3.5 3v-3H5.5a2 2 0 0 1-2-2Z" fill="none" stroke="currentColor" stroke-width="1.4" stroke-linejoin="round"/></symbol>
+  <symbol id="i-x" viewBox="0 0 20 20"><path d="M5.5 5.5l9 9M14.5 5.5l-9 9" stroke="currentColor" stroke-width="1.6" stroke-linecap="round"/></symbol>
+</svg>
+
 <div id="loginScreen" class="tela tela-login">
   <div class="login-card">
-    <h1 class="marca">Rotina</h1>
-    <p class="subtitulo">Um passo de cada vez.</p>
+    <div class="cab-marca" style="justify-content:center;margin-bottom:6px;"><svg><use href="#i-gato"/></svg><span>Rotina</span></div>
+    <h1 class="marca">Um passo de cada vez</h1>
+    <p class="subtitulo">Seu painel do dia, sem cobrança.</p>
     <button id="loginBtn" class="botao botao-primario">Entrar com Google</button>
     <p id="loginStatus" class="texto-status"></p>
   </div>
@@ -26,91 +60,291 @@
 
 <div id="appScreen" class="tela tela-app" hidden>
 
-  <header class="topo">
+  <header class="cabecalho">
     <div>
-      <p class="topo-saudacao" id="saudacao">Olá</p>
-      <p class="topo-data" id="dataHoje"></p>
+      <div class="cab-marca"><svg><use href="#i-gato"/></svg><span>Rotina</span></div>
+      <h1 class="cab-saudacao" id="saudacao">Olá</h1>
+      <p class="cab-data" id="dataHoje"></p>
     </div>
-    <div class="topo-acoes">
-      <button id="temaBtn" class="botao-icone" aria-label="Alternar tema claro/escuro">☀️</button>
-      <button id="menuBtn" class="botao-icone" aria-label="Menu" aria-expanded="false">⋯</button>
+    <div class="cab-widgets">
+      <div class="cab-item mini-cal" id="miniCalendario"></div>
+      <div class="cab-item progresso-anel">
+        <div class="anel" id="anelProgresso" style="--pct:0"></div>
+        <div class="progresso-texto"><strong id="progressoTexto">0/0</strong><span>feitas hoje</span></div>
+      </div>
+      <button class="tema-botao" id="botaoTema" aria-label="Alternar tema claro e escuro">
+        <svg class="icone-sol"><use href="#i-sol"/></svg>
+        <svg class="icone-lua"><use href="#i-lua"/></svg>
+      </button>
     </div>
   </header>
 
-  <div id="menuPainel" class="menu-painel" hidden>
-    <p id="menuEmail" class="menu-email"></p>
-    <button id="notifBtn" class="item-menu">Ativar notificações neste aparelho</button>
-    <button id="novaTarefaBtn" class="item-menu">+ Nova tarefa</button>
-    <button id="diaAnteriorBtn" class="item-menu">Marcar dia anterior</button>
-    <button id="logoutBtn" class="item-menu item-menu-sair">Sair</button>
-  </div>
-
   <p id="notifAviso" class="aviso" hidden></p>
 
-  <!-- Elemento de assinatura: a trilha do dia -->
-  <section class="trilha-wrap">
-    <p class="trilha-legenda">Sua trilha de hoje</p>
-    <ol id="trilha" class="trilha"></ol>
-  </section>
+  <nav class="abas" id="abas" role="tablist" aria-label="Seções do app">
+    <button class="aba" role="tab" aria-selected="true" data-alvo="vistaHoje" type="button"><svg><use href="#i-pata"/></svg>Hoje</button>
+    <button class="aba" role="tab" aria-selected="false" data-alvo="vistaRotina" type="button"><svg><use href="#i-lista"/></svg>Rotina</button>
+    <button class="aba" role="tab" aria-selected="false" data-alvo="vistaCalendario" type="button"><svg><use href="#i-calendario"/></svg>Calendário</button>
+    <button class="aba" role="tab" aria-selected="false" data-alvo="vistaProgresso" type="button"><svg><use href="#i-grafico"/></svg>Progresso</button>
+    <button class="aba" role="tab" aria-selected="false" data-alvo="vistaConfig" type="button"><svg><use href="#i-config"/></svg>Config.</button>
+  </nav>
 
-  <section id="agoraCard" class="agora-card" hidden>
-    <p class="agora-etiqueta">Agora</p>
-    <h2 id="agoraNome" class="agora-nome"></h2>
-    <p id="agoraHorario" class="agora-horario"></p>
-    <div class="agora-acoes">
-      <button id="agoraConcluir" class="botao botao-primario">Concluí</button>
-      <button id="agoraChat" class="botao botao-secundario">Preciso de ajuda com isso</button>
+  <!-- ===================== HOJE ===================== -->
+  <div class="vista" id="vistaHoje" role="tabpanel">
+    <div class="painel" id="painel">
+
+      <article class="bloco bloco--foco" data-cor="pessego" data-id="foco" draggable="true">
+        <div class="bloco-cab">
+          <div class="bloco-titulo-grupo"><span class="bloco-icone"><svg><use href="#i-alvo"/></svg></span><span class="bloco-titulo">Foco de hoje</span></div>
+          <button class="arrastar-alca" aria-label="Reordenar bloco Foco de hoje" tabindex="0"><svg><use href="#i-alca"/></svg></button>
+        </div>
+        <div class="item foco-item" id="focoLinha">
+          <button class="marca-check" id="focoCheck" aria-label="Marcar foco como concluído"><svg><use href="#i-check"/></svg><svg class="patinha"><use href="#i-pata"/></svg></button>
+          <input type="text" id="focoInput" class="foco-input" maxlength="120" placeholder="Se hoje só der pra fazer uma coisa, qual seria?">
+        </div>
+      </article>
+
+      <article class="bloco" data-cor="rosa" data-id="prioridades" draggable="true">
+        <div class="bloco-cab">
+          <div class="bloco-titulo-grupo"><span class="bloco-icone"><svg><use href="#i-bandeira"/></svg></span><span class="bloco-titulo">Prioridades</span></div>
+          <button class="arrastar-alca" aria-label="Reordenar bloco Prioridades" tabindex="0"><svg><use href="#i-alca"/></svg></button>
+        </div>
+        <ul id="listaPrioridades" class="lista-itens"></ul>
+        <p id="prioridadesVazio" class="bloco-sub" hidden>Marque até 3 tarefas como prioridade na aba Rotina.</p>
+      </article>
+
+      <article class="bloco" data-cor="ceu" data-id="agenda" draggable="true">
+        <div class="bloco-cab">
+          <div class="bloco-titulo-grupo"><span class="bloco-icone"><svg><use href="#i-relogio"/></svg></span><span class="bloco-titulo">Agenda do dia</span></div>
+          <button class="arrastar-alca" aria-label="Reordenar bloco Agenda do dia" tabindex="0"><svg><use href="#i-alca"/></svg></button>
+        </div>
+        <ol id="linhaAgenda" class="linha-tempo"></ol>
+        <p id="agendaVazio" class="bloco-sub" hidden>Nenhum compromisso marcado pra hoje.</p>
+      </article>
+
+      <article class="bloco" data-cor="lilas" data-id="tarefas" draggable="true">
+        <div class="bloco-cab">
+          <div class="bloco-titulo-grupo"><span class="bloco-icone"><svg><use href="#i-lista"/></svg></span><span class="bloco-titulo">Tarefas</span></div>
+          <button class="botao-icone-destaque" id="addTarefaBtn" aria-label="Nova tarefa" type="button"><svg><use href="#i-mais"/></svg></button>
+        </div>
+        <ul id="listaTarefas" class="lista-itens"></ul>
+        <p id="tarefasVazio" class="bloco-sub" hidden>Nenhuma tarefa pra hoje ainda.</p>
+      </article>
+
+      <article class="bloco" data-cor="areia" data-id="depois" draggable="true">
+        <div class="bloco-cab">
+          <div class="bloco-titulo-grupo"><span class="bloco-icone"><svg><use href="#i-bandeja"/></svg></span><span class="bloco-titulo">Fazer depois</span></div>
+          <button class="botao-icone-destaque" id="addDepoisBtn" aria-label="Novo item pra depois" type="button"><svg><use href="#i-mais"/></svg></button>
+        </div>
+        <p class="bloco-sub" style="margin-bottom:10px;">Sem pressa — fica guardado aqui até você ter espaço.</p>
+        <div id="listaDepois" class="chips"></div>
+        <p id="depoisVazio" class="bloco-sub" hidden>Nada guardado pra depois agora.</p>
+      </article>
+
+      <article class="bloco" data-cor="lilas" data-id="mente" draggable="true">
+        <div class="bloco-cab">
+          <div class="bloco-titulo-grupo"><span class="bloco-icone"><svg><use href="#i-nuvem"/></svg></span><span class="bloco-titulo">Descarregar a mente</span></div>
+          <button class="arrastar-alca" aria-label="Reordenar bloco Descarregar a mente" tabindex="0"><svg><use href="#i-alca"/></svg></button>
+        </div>
+        <textarea class="mente-area" id="menteTexto" placeholder="O que está passando pela cabeça agora? Pode escrever sem se preocupar em organizar."></textarea>
+        <p class="mente-legenda">Fica só aqui, salvo automaticamente.</p>
+      </article>
+
+      <article class="bloco" data-cor="menta" data-id="autocuidado" draggable="true">
+        <div class="bloco-cab">
+          <div class="bloco-titulo-grupo"><span class="bloco-icone"><svg><use href="#i-coracao"/></svg></span><span class="bloco-titulo">Autocuidado</span></div>
+          <button class="botao-icone-destaque" id="addAutocuidadoBtn" aria-label="Novo item de autocuidado" type="button"><svg><use href="#i-mais"/></svg></button>
+        </div>
+        <div id="listaAutocuidado" class="grade-toques"></div>
+        <p id="autocuidadoVazio" class="bloco-sub" hidden>Nada cadastrado ainda.</p>
+      </article>
+
+      <article class="bloco" data-cor="rosa" data-id="habitos" draggable="true">
+        <div class="bloco-cab">
+          <div class="bloco-titulo-grupo"><span class="bloco-icone"><svg><use href="#i-repetir"/></svg></span><span class="bloco-titulo">Hábitos</span></div>
+          <button class="botao-icone-destaque" id="addHabitoBtn" aria-label="Novo hábito" type="button"><svg><use href="#i-mais"/></svg></button>
+        </div>
+        <div id="listaHabitos"></div>
+        <p id="habitosVazio" class="bloco-sub" hidden>Nenhum hábito cadastrado ainda.</p>
+      </article>
+
+      <article class="bloco" data-cor="ceu" data-id="agua" draggable="true">
+        <div class="bloco-cab">
+          <div class="bloco-titulo-grupo"><span class="bloco-icone"><svg><use href="#i-gota"/></svg></span><span class="bloco-titulo">Água</span></div>
+          <button class="arrastar-alca" aria-label="Reordenar bloco Água" tabindex="0"><svg><use href="#i-alca"/></svg></button>
+        </div>
+        <div class="agua-linha" id="linhaAgua"></div>
+        <p class="agua-texto"><strong id="aguaTexto">0</strong> de 8 copos</p>
+      </article>
+
+      <article class="bloco" data-cor="pessego" data-id="refeicoes" draggable="true">
+        <div class="bloco-cab">
+          <div class="bloco-titulo-grupo"><span class="bloco-icone"><svg><use href="#i-tigela"/></svg></span><span class="bloco-titulo">Refeições</span></div>
+          <button class="arrastar-alca" aria-label="Reordenar bloco Refeições" tabindex="0"><svg><use href="#i-alca"/></svg></button>
+        </div>
+        <div class="refeicoes" id="refeicoes">
+          <div class="refeicao"><span>Café da manhã</span><button type="button" data-refeicao="cafe">ainda não</button></div>
+          <div class="refeicao"><span>Almoço</span><button type="button" data-refeicao="almoco">ainda não</button></div>
+          <div class="refeicao"><span>Lanche</span><button type="button" data-refeicao="lanche">ainda não</button></div>
+          <div class="refeicao"><span>Jantar</span><button type="button" data-refeicao="jantar">ainda não</button></div>
+        </div>
+      </article>
+
+      <article class="bloco" data-cor="lilas" data-id="humor" draggable="true">
+        <div class="bloco-cab">
+          <div class="bloco-titulo-grupo"><span class="bloco-icone"><svg><use href="#i-calma"/></svg></span><span class="bloco-titulo">Humor e energia</span></div>
+          <button class="arrastar-alca" aria-label="Reordenar bloco Humor e energia" tabindex="0"><svg><use href="#i-alca"/></svg></button>
+        </div>
+        <div class="escala-grupo">
+          <p class="escala-rotulo">Como você está?</p>
+          <div class="escala-opcoes" id="grupoHumor">
+            <button class="escala-btn" data-valor="calma" aria-pressed="false" type="button"><svg><use href="#i-calma"/></svg><span>Calma</span></button>
+            <button class="escala-btn" data-valor="ok" aria-pressed="false" type="button"><svg><use href="#i-ok"/></svg><span>Ok</span></button>
+            <button class="escala-btn" data-valor="agitada" aria-pressed="false" type="button"><svg><use href="#i-agitada"/></svg><span>Agitada</span></button>
+            <button class="escala-btn" data-valor="cansada" aria-pressed="false" type="button"><svg><use href="#i-cansada"/></svg><span>Cansada</span></button>
+          </div>
+        </div>
+        <div class="escala-grupo">
+          <p class="escala-rotulo">Energia</p>
+          <div class="escala-opcoes" id="grupoEnergia">
+            <button class="escala-btn" data-valor="baixa" aria-pressed="false" type="button"><svg><use href="#i-pilha1"/></svg><span>Baixa</span></button>
+            <button class="escala-btn" data-valor="media" aria-pressed="false" type="button"><svg><use href="#i-pilha2"/></svg><span>Média</span></button>
+            <button class="escala-btn" data-valor="alta" aria-pressed="false" type="button"><svg><use href="#i-pilha3"/></svg><span>Alta</span></button>
+          </div>
+        </div>
+      </article>
+
+      <article class="bloco" data-cor="areia" data-id="lembrar" draggable="true">
+        <div class="bloco-cab">
+          <div class="bloco-titulo-grupo"><span class="bloco-icone"><svg><use href="#i-pin"/></svg></span><span class="bloco-titulo">Não esquecer</span></div>
+          <button class="arrastar-alca" aria-label="Reordenar bloco Não esquecer" tabindex="0"><svg><use href="#i-alca"/></svg></button>
+        </div>
+        <div id="listaLembretes" class="chips"></div>
+        <form id="formLembrete" class="mini-form">
+          <input type="text" id="campoLembrete" maxlength="80" placeholder="Adicionar lembrete rápido…">
+          <button type="submit" class="botao-icone-destaque" aria-label="Adicionar lembrete"><svg><use href="#i-mais"/></svg></button>
+        </form>
+      </article>
+
+      <article class="bloco" data-cor="dourado" data-id="conquistas" draggable="true">
+        <div class="bloco-cab">
+          <div class="bloco-titulo-grupo"><span class="bloco-icone"><svg><use href="#i-pata"/></svg></span><span class="bloco-titulo">Conquistas do dia</span></div>
+          <button class="arrastar-alca" aria-label="Reordenar bloco Conquistas do dia" tabindex="0"><svg><use href="#i-alca"/></svg></button>
+        </div>
+        <div class="medalhas" id="medalhas"></div>
+        <p id="conquistasVazio" class="bloco-sub" hidden>Ainda sem conquistas — até as pequenas contam, o dia não acabou.</p>
+        <form id="formConquista" class="mini-form">
+          <input type="text" id="campoConquista" maxlength="80" placeholder="Registrar uma pequena vitória…">
+          <button type="submit" class="botao-icone-destaque" aria-label="Registrar conquista"><svg><use href="#i-mais"/></svg></button>
+        </form>
+      </article>
+
     </div>
-  </section>
-
-  <section id="listaVazia" class="vazio" hidden>
-    <p>Nenhuma tarefa cadastrada ainda.</p>
-    <button id="listaVaziaBtn" class="botao botao-primario">Criar a primeira tarefa</button>
-  </section>
-
-  <div class="listas-grade">
-    <section id="secaoDiarias" class="lista-wrap" hidden>
-      <p class="lista-titulo">Tarefas diárias</p>
-      <ul id="listaDiarias" class="lista-tarefas"></ul>
-    </section>
-
-    <section id="secaoSemanais" class="lista-wrap" hidden>
-      <p class="lista-titulo">Tarefas semanais</p>
-      <ul id="listaSemanais" class="lista-tarefas"></ul>
-    </section>
   </div>
 
-  <section class="mes-wrap">
-    <p class="lista-titulo">Este mês: tarefas e conquistas</p>
-    <div id="mesCalendario" class="mes-calendario"></div>
-    <div id="mesConquistas" class="mes-conquistas"></div>
-  </section>
+  <!-- ===================== ROTINA (gestão de tudo) ===================== -->
+  <div class="vista" id="vistaRotina" role="tabpanel" hidden>
+    <div class="tela-simples">
+      <div class="tela-cab">
+        <h2 class="tela-titulo">Todos os itens</h2>
+        <button class="botao-icone-destaque" id="novoItemBtnRotina" aria-label="Novo item" type="button"><svg><use href="#i-mais"/></svg></button>
+      </div>
+      <div class="cartao-simples"><p class="bloco-sub" style="margin:0 0 10px;">Tarefas</p><ul id="rotinaTarefas" class="lista-itens"></ul></div>
+      <div class="cartao-simples"><p class="bloco-sub" style="margin:0 0 10px;">Compromissos</p><ul id="rotinaCompromissos" class="lista-itens"></ul></div>
+      <div class="cartao-simples"><p class="bloco-sub" style="margin:0 0 10px;">Fazer depois</p><ul id="rotinaDepois" class="lista-itens"></ul></div>
+      <div class="cartao-simples"><p class="bloco-sub" style="margin:0 0 10px;">Hábitos</p><ul id="rotinaHabitos" class="lista-itens"></ul></div>
+      <div class="cartao-simples"><p class="bloco-sub" style="margin:0 0 10px;">Autocuidado</p><ul id="rotinaAutocuidado" class="lista-itens"></ul></div>
+    </div>
+  </div>
+
+  <!-- ===================== CALENDÁRIO ===================== -->
+  <div class="vista" id="vistaCalendario" role="tabpanel" hidden>
+    <div class="tela-simples">
+      <div class="tela-cab"><h2 class="tela-titulo" id="calGrandeTitulo">Mês</h2></div>
+      <div class="cartao-simples"><div class="cal-grande" id="calGrande"></div></div>
+    </div>
+  </div>
+
+  <!-- ===================== PROGRESSO ===================== -->
+  <div class="vista" id="vistaProgresso" role="tabpanel" hidden>
+    <div class="tela-simples">
+      <div class="tela-cab"><h2 class="tela-titulo">Progresso</h2></div>
+      <div class="cartao-simples">
+        <p class="bloco-sub" style="margin:0 0 10px;">Este mês</p>
+        <div class="cal-grande" id="progMesCalendario"></div>
+        <div class="medalhas" id="progMesConquistas" style="margin-top:14px;"></div>
+      </div>
+      <div class="cartao-simples">
+        <p class="bloco-sub" style="margin:0 0 10px;">Hábitos da semana</p>
+        <div id="listaHabitosProgresso"></div>
+        <p id="habitosProgressoVazio" class="bloco-sub" hidden>Cadastre um hábito na aba Rotina pra acompanhar aqui.</p>
+      </div>
+    </div>
+  </div>
+
+  <!-- ===================== CONFIGURAÇÕES ===================== -->
+  <div class="vista" id="vistaConfig" role="tabpanel" hidden>
+    <div class="tela-simples">
+      <div class="tela-cab"><h2 class="tela-titulo">Configurações</h2></div>
+      <div class="cartao-simples config-lista">
+        <div class="config-item">
+          <div class="config-item-texto"><strong id="menuEmail">—</strong><span>Conta conectada</span></div>
+        </div>
+        <div class="config-item">
+          <div class="config-item-texto"><strong>Tema escuro</strong><span>Combina com pouca luz e telas à noite</span></div>
+          <button class="interruptor" id="interruptorTema" aria-pressed="false" aria-label="Alternar tema escuro" type="button"></button>
+        </div>
+        <div class="config-item">
+          <div class="config-item-texto"><strong>Notificações</strong><span>Lembrete no aparelho, mesmo com o app fechado</span></div>
+          <button class="botao botao-secundario" id="notifBtn" style="width:auto;padding:9px 16px;" type="button">Ativar</button>
+        </div>
+        <div class="config-item">
+          <div class="config-item-texto"><strong>Sair</strong><span>Desconectar desta conta</span></div>
+          <button class="botao botao-secundario" id="logoutBtn" style="width:auto;padding:9px 16px;" type="button">Sair</button>
+        </div>
+      </div>
+    </div>
+  </div>
 
 </div>
 
-<!-- Formulário de nova tarefa -->
-<dialog id="tarefaDialog" class="dialogo">
-  <form id="tarefaForm" method="dialog" class="form-tarefa">
-    <h2 id="tarefaDialogTitulo">Nova tarefa</h2>
+<!-- Diálogo único: novo item / editar item -->
+<dialog id="itemDialog" class="dialogo">
+  <form id="itemForm" method="dialog" class="form-tarefa">
+    <h2 id="itemDialogTitulo">Novo item</h2>
+    <label>
+      Tipo
+      <select id="campoTipo">
+        <option value="tarefa">Tarefa</option>
+        <option value="compromisso">Compromisso (agenda)</option>
+        <option value="depois">Fazer depois</option>
+        <option value="habito">Hábito</option>
+        <option value="autocuidado">Autocuidado</option>
+      </select>
+    </label>
     <label>
       Nome
       <input type="text" id="campoNome" required maxlength="60" placeholder="Ex: escovar os dentes">
     </label>
-    <label>
+    <label id="grupoCategoria">
       Categoria
       <select id="campoCategoria">
-        <option value="higiene">Higiene</option>
-        <option value="casa">Casa</option>
-        <option value="trabalho">Trabalho</option>
-        <option value="saude">Saúde</option>
-        <option value="outro">Outro</option>
+        <option value="higiene">🧼 Higiene</option>
+        <option value="casa">🧹 Casa</option>
+        <option value="trabalho">💼 Trabalho</option>
+        <option value="saude">💊 Saúde</option>
+        <option value="outro">✨ Outro</option>
       </select>
     </label>
-    <label>
+    <label id="grupoHorario">
       Horário
-      <input type="time" id="campoHorario" required>
+      <input type="time" id="campoHorario">
     </label>
-    <fieldset class="dias-fieldset">
+    <label id="grupoLocal">
+      Local (opcional)
+      <input type="text" id="campoLocal" maxlength="60" placeholder="Ex: consultório, chamada de vídeo">
+    </label>
+    <fieldset class="dias-fieldset" id="grupoDias">
       <legend>Repetir em</legend>
       <div class="dias-grade" id="diasGrade">
         <label><input type="checkbox" value="0" checked> dom</label>
@@ -122,24 +356,35 @@
         <label><input type="checkbox" value="6" checked> sáb</label>
       </div>
     </fieldset>
+    <fieldset class="dias-fieldset" id="grupoIcone">
+      <legend>Ícone</legend>
+      <div class="icone-escolha" id="iconeEscolha">
+        <label><input type="radio" name="icone" value="comprimido" checked><svg><use href="#i-comprimido"/></svg></label>
+        <label><input type="radio" name="icone" value="gota"><svg><use href="#i-gota"/></svg></label>
+        <label><input type="radio" name="icone" value="tigela"><svg><use href="#i-tigela"/></svg></label>
+        <label><input type="radio" name="icone" value="lua"><svg><use href="#i-lua"/></svg></label>
+        <label><input type="radio" name="icone" value="coracao"><svg><use href="#i-coracao"/></svg></label>
+      </div>
+    </fieldset>
+    <label class="linha-checkbox" id="grupoPrioridade">
+      <input type="checkbox" id="campoPrioridade"> Marcar como prioridade (máx. 3 por dia)
+    </label>
+    <p id="prioridadeAviso" class="texto-status" hidden>Já tem 3 tarefas em destaque hoje — desmarque uma antes de adicionar outra.</p>
     <div class="form-acoes">
-      <button type="button" id="cancelarTarefa" class="botao botao-secundario">Cancelar</button>
+      <button type="button" id="excluirItem" class="botao botao-secundario" hidden>Excluir</button>
+      <button type="button" id="cancelarItem" class="botao botao-secundario">Cancelar</button>
       <button type="submit" class="botao botao-primario">Salvar</button>
     </div>
   </form>
 </dialog>
 
-<!-- Marcar tarefas de um dia anterior -->
-<dialog id="diaAnteriorDialog" class="dialogo">
-  <h2>Marcar dia anterior</h2>
-  <label>
-    Data
-    <input type="date" id="campoDataAnterior">
-  </label>
-  <ul id="listaDiaAnterior" class="lista-tarefas dia-anterior-lista"></ul>
-  <p id="diaAnteriorVazio" class="texto-status" hidden>Nenhuma tarefa nesse dia.</p>
+<!-- Diálogo: ver/marcar itens de um dia (aberto pelo calendário) -->
+<dialog id="diaDialog" class="dialogo">
+  <h2 id="diaDialogTitulo">Dia</h2>
+  <ul id="listaDiaDialog" class="lista-tarefas dia-anterior-lista"></ul>
+  <p id="diaDialogVazio" class="texto-status" hidden>Nenhum item marcável nesse dia.</p>
   <div class="form-acoes">
-    <button type="button" id="fecharDiaAnterior" class="botao botao-secundario">Fechar</button>
+    <button type="button" id="fecharDiaDialog" class="botao botao-secundario">Fechar</button>
   </div>
 </dialog>
 
