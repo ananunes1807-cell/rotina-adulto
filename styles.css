@@ -73,6 +73,9 @@
 :root[data-fonte="enorme"]{ font-size:150%; }
 
 *{ box-sizing:border-box; }
+/* Vários componentes definem display:flex/grid explícito; sem isso, o atributo
+   `hidden` do HTML perde pra essas regras e o elemento continua aparecendo. */
+[hidden]{ display:none !important; }
 html,body{ height:100%; background:var(--creme); }
 body{
   margin:0; background:var(--creme); color:var(--tinta);
