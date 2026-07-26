@@ -50,8 +50,56 @@ function alternarTema() {
   localStorage.setItem('tema', novo);
   aplicarTema(novo);
 }
-$('botaoTema').addEventListener('click', alternarTema);
 $('interruptorTema').addEventListener('click', alternarTema);
+
+// ---------- Tamanho da letra ----------
+const NIVEIS_FONTE = [
+  { id: 'normal', rotulo: 'Normal' },
+  { id: 'grande', rotulo: 'Grande' },
+  { id: 'muito-grande', rotulo: 'Muito grande' },
+  { id: 'enorme', rotulo: 'Enorme' }
+];
+function aplicarFonte(id) {
+  const indice = Math.max(0, NIVEIS_FONTE.findIndex(n => n.id === id));
+  document.documentElement.setAttribute('data-fonte', NIVEIS_FONTE[indice].id);
+  $('fonteNivelTexto').textContent = NIVEIS_FONTE[indice].rotulo;
+  $('fonteMenos').disabled = indice === 0;
+  $('fonteMais').disabled = indice === NIVEIS_FONTE.length - 1;
+}
+function indiceFonteAtual() {
+  const atual = document.documentElement.getAttribute('data-fonte') || 'normal';
+  return Math.max(0, NIVEIS_FONTE.findIndex(n => n.id === atual));
+}
+aplicarFonte(localStorage.getItem('fonte') || 'normal');
+$('fonteMenos').addEventListener('click', () => {
+  const novo = NIVEIS_FONTE[Math.max(0, indiceFonteAtual() - 1)].id;
+  localStorage.setItem('fonte', novo);
+  aplicarFonte(novo);
+});
+$('fonteMais').addEventListener('click', () => {
+  const novo = NIVEIS_FONTE[Math.min(NIVEIS_FONTE.length - 1, indiceFonteAtual() + 1)].id;
+  localStorage.setItem('fonte', novo);
+  aplicarFonte(novo);
+});
+
+// ---------- Menu de conta (avatar) ----------
+const consultaDesktopConta = window.matchMedia('(min-width: 760px)');
+let contaAberta = false;
+function atualizarPainelConta() {
+  const mostrar = consultaDesktopConta.matches || contaAberta;
+  $('contaPainel').hidden = !mostrar;
+  $('botaoConta').setAttribute('aria-expanded', String(mostrar));
+}
+$('botaoConta').addEventListener('click', () => { contaAberta = !contaAberta; atualizarPainelConta(); });
+document.addEventListener('click', e => {
+  if (!contaAberta) return;
+  if (!e.target.closest('.conta-area')) { contaAberta = false; atualizarPainelConta(); }
+});
+document.addEventListener('keydown', e => {
+  if (e.key === 'Escape' && contaAberta) { contaAberta = false; atualizarPainelConta(); }
+});
+consultaDesktopConta.addEventListener('change', atualizarPainelConta);
+atualizarPainelConta();
 
 // ---------- Navegação por abas ----------
 document.querySelectorAll('.aba').forEach(botao => {
@@ -87,10 +135,21 @@ onAuthStateChanged(auth, async user => {
   $('loginScreen').hidden = true;
   $('appScreen').hidden = false;
   $('menuEmail').textContent = user.email || '';
+  const nome = user.displayName || user.email || '';
+  $('contaNome').textContent = nome.split(' ')[0] || 'Você';
+  $('contaIniciais').textContent = iniciaisDe(nome);
+  $('botaoConta').title = user.email || '';
 
   await garantirDocumento(user);
   escutarDados();
 });
+
+function iniciaisDe(nome) {
+  const partes = nome.trim().split(/\s+/).filter(Boolean);
+  if (partes.length === 0) return '?';
+  if (partes.length === 1) return partes[0].slice(0, 2).toUpperCase();
+  return (partes[0][0] + partes[partes.length - 1][0]).toUpperCase();
+}
 
 async function garantirDocumento(user) {
   const ref = doc(db, 'usuarios', uid);
@@ -221,9 +280,9 @@ function renderizarTudo() {
   renderizarLembretes();
   renderizarConquistasHoje();
   renderizarRotina();
-  montarCalendarioMini();
-  montarCalendarioGrande('calGrande', 'calGrandeTitulo', 'agenda');
-  montarCalendarioGrande('progMesCalendario', null, 'progresso');
+  montarCalendarioGrande('painelCal', null, 'agenda', true);
+  montarCalendarioGrande('calGrande', 'calGrandeTitulo', 'agenda', false);
+  montarCalendarioGrande('progMesCalendario', null, 'progresso', false);
   renderizarProgressoConquistas();
   renderizarHabitos('listaHabitosProgresso', 'habitosProgressoVazio', false);
   if ($('diaDialog').open && diaDialogAtual) abrirDiaDialog(diaDialogAtual);
@@ -465,6 +524,15 @@ async function excluirLembrete(id) {
   await updateDoc(doc(db, 'usuarios', uid), { lembretes });
 }
 
+// ---------- Mascote ----------
+const FRASES_MASCOTE = [
+  'Uma coisa de cada vez.',
+  'Pequenos passos também contam.',
+  'Tudo bem continuar depois.',
+  'Hoje você fez o que conseguiu.'
+];
+const fraseMascoteSessao = FRASES_MASCOTE[Math.floor(Math.random() * FRASES_MASCOTE.length)];
+
 // ---------- Conquistas do dia ----------
 function calcularConquistasAutomaticas() {
   const hoje = hojeISO();
@@ -496,6 +564,7 @@ function renderizarConquistasHoje() {
     b.querySelector('button').addEventListener('click', () => excluirConquistaManual(c.id));
     el.appendChild(b);
   });
+  $('conquistasVazioTexto').textContent = fraseMascoteSessao;
   $('conquistasVazio').hidden = (auto.length + manuais.length) > 0;
 }
 $('formConquista').addEventListener('submit', async e => {
@@ -532,39 +601,71 @@ function renderizarRotina() {
 }
 
 // ---------- Calendários ----------
-function montarCalendarioMini() {
-  const el = $('miniCalendario'); el.innerHTML = '';
-  const hoje = new Date();
-  const cab = document.createElement('div'); cab.className = 'mini-cal-cab';
-  cab.innerHTML = '<span></span>';
-  cab.querySelector('span').textContent = hoje.toLocaleDateString('pt-BR', { month: 'short' });
-  el.appendChild(cab);
-  const grade = document.createElement('div'); grade.className = 'mini-cal-grade';
-  const ano = hoje.getFullYear(), mes = hoje.getMonth();
-  const primeiro = new Date(ano, mes, 1);
-  const diasNoMes = new Date(ano, mes + 1, 0).getDate();
-  for (let i = 0; i < primeiro.getDay(); i++) grade.appendChild(document.createElement('span'));
-  for (let d = 1; d <= diasNoMes; d++) {
-    const dataStr = dataISO(new Date(ano, mes, d));
-    const span = document.createElement('span');
-    span.className = 'dia' + (dataStr === hojeISO() ? ' hoje' : '') + (diaTemAgenda(dataStr) ? ' tem-item' : '');
-    span.textContent = d;
-    grade.appendChild(span);
-  }
-  el.appendChild(grade);
+const NOMES_DIA_SEMANA = ['dom', 'seg', 'ter', 'qua', 'qui', 'sex', 'sáb'];
+const CATEGORIA_COR_DOT = { tarefa: 'lilas', compromisso: 'ceu', autocuidado: 'menta' };
+let mesExibidoOffset = 0;
+
+function categoriasDoDia(dataStr) {
+  const dia = diaSemanaDe(dataStr);
+  const cores = new Set();
+  (dadosUsuario.itens || []).forEach(i => {
+    if (!i.ativa) return;
+    if ((i.tipo === 'tarefa' || i.tipo === 'compromisso') && (!i.dias || i.dias.length === 0 || i.dias.includes(dia))) {
+      cores.add(CATEGORIA_COR_DOT[i.tipo]);
+    }
+    if (i.tipo === 'autocuidado') cores.add(CATEGORIA_COR_DOT.autocuidado);
+  });
+  return [...cores];
 }
 
-function montarCalendarioGrande(alvoId, tituloId, modo) {
-  const el = $(alvoId); el.innerHTML = '';
+function montarCabecalhoSemana(el) {
+  const linha = document.createElement('div');
+  linha.className = 'cal-semana';
+  NOMES_DIA_SEMANA.forEach(nome => {
+    const span = document.createElement('span');
+    span.textContent = nome;
+    linha.appendChild(span);
+  });
+  el.appendChild(linha);
+}
+
+function montarCalendarioGrande(alvoId, tituloId, modo, comNavegacao = false) {
+  const el = $(alvoId); if (!el) return;
+  el.innerHTML = '';
   const hoje = new Date();
-  if (tituloId) $(tituloId).textContent = hoje.toLocaleDateString('pt-BR', { month: 'long', year: 'numeric' });
-  const ano = hoje.getFullYear(), mes = hoje.getMonth();
+  const base = new Date(hoje.getFullYear(), hoje.getMonth() + (comNavegacao ? mesExibidoOffset : 0), 1);
+  const ano = base.getFullYear(), mes = base.getMonth();
+  const titulo = base.toLocaleDateString('pt-BR', { month: 'long', year: 'numeric' });
+  const tituloFormatado = titulo.charAt(0).toUpperCase() + titulo.slice(1);
+  if (tituloId && !comNavegacao) $(tituloId).textContent = tituloFormatado;
+  if (comNavegacao) {
+    const nav = document.createElement('div'); nav.className = 'cal-nav-topo';
+    const btnAnt = document.createElement('button');
+    btnAnt.type = 'button'; btnAnt.className = 'cal-nav-btn'; btnAnt.setAttribute('aria-label', 'Mês anterior');
+    btnAnt.innerHTML = '<svg><use href="#i-seta-esq"/></svg>';
+    btnAnt.addEventListener('click', () => { mesExibidoOffset--; renderizarTudo(); });
+    const h3 = document.createElement('h3'); h3.className = 'cal-mes-titulo'; h3.textContent = tituloFormatado;
+    const btnProx = document.createElement('button');
+    btnProx.type = 'button'; btnProx.className = 'cal-nav-btn'; btnProx.setAttribute('aria-label', 'Próximo mês');
+    btnProx.innerHTML = '<svg><use href="#i-seta-dir"/></svg>';
+    btnProx.addEventListener('click', () => { mesExibidoOffset++; renderizarTudo(); });
+    nav.append(btnAnt, h3, btnProx);
+    el.appendChild(nav);
+    if (mesExibidoOffset !== 0) {
+      const btnHoje = document.createElement('button');
+      btnHoje.type = 'button'; btnHoje.className = 'cal-nav-hoje'; btnHoje.textContent = 'Voltar pra hoje';
+      btnHoje.addEventListener('click', () => { mesExibidoOffset = 0; renderizarTudo(); });
+      el.appendChild(btnHoje);
+    }
+  }
+  montarCabecalhoSemana(el);
+  const grade = document.createElement('div'); grade.className = 'cal-grade';
   const primeiro = new Date(ano, mes, 1);
   const diasNoMes = new Date(ano, mes + 1, 0).getDate();
   for (let i = 0; i < primeiro.getDay(); i++) {
     const vazio = document.createElement('span');
-    vazio.className = 'dia'; vazio.style.background = 'transparent';
-    el.appendChild(vazio);
+    vazio.className = 'dia dia-vazia';
+    grade.appendChild(vazio);
   }
   for (let d = 1; d <= diasNoMes; d++) {
     const dataObj = new Date(ano, mes, d);
@@ -577,15 +678,20 @@ function montarCalendarioGrande(alvoId, tituloId, modo) {
       const completo = diaCompleto(dataStr);
       if (completo === true) classe += ' completo';
       else if (completo === false) classe += ' incompleto';
-      else if (diaTemAgenda(dataStr)) classe += ' tem-item';
-    } else if (diaTemAgenda(dataStr)) {
-      classe += ' tem-item';
     }
     btn.className = classe;
-    btn.textContent = d;
+    btn.innerHTML = `<span class="cal-dia-numero">${d}</span><span class="cal-dia-pontos"></span>`;
+    const pontosEl = btn.querySelector('.cal-dia-pontos');
+    categoriasDoDia(dataStr).slice(0, 3).forEach(cor => {
+      const ponto = document.createElement('span');
+      ponto.className = 'cal-ponto cal-ponto-' + cor;
+      pontosEl.appendChild(ponto);
+    });
+    btn.setAttribute('aria-label', dataObj.toLocaleDateString('pt-BR', { weekday: 'long', day: 'numeric', month: 'long' }));
     btn.addEventListener('click', () => abrirDiaDialog(dataStr));
-    el.appendChild(btn);
+    grade.appendChild(btn);
   }
+  el.appendChild(grade);
 }
 
 function abrirDiaDialog(dataStr) {

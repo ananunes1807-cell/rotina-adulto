@@ -8,7 +8,7 @@
 <link rel="manifest" href="./manifest.webmanifest">
 <link rel="icon" href="./icon-192.png">
 <link rel="apple-touch-icon" href="./icon-192.png">
-<link rel="stylesheet" href="./styles.css?v=6">
+<link rel="stylesheet" href="./styles.css?v=7">
 </head>
 <body>
 
@@ -46,6 +46,21 @@
   <symbol id="i-editar" viewBox="0 0 20 20"><path d="M12.3 3.7 16 7.4 6.8 16.6 3 17l.4-3.8L12.3 3.7Z" fill="none" stroke="currentColor" stroke-width="1.4" stroke-linejoin="round" stroke-linecap="round"/></symbol>
   <symbol id="i-chat" viewBox="0 0 20 20"><path d="M3.5 5.5A2 2 0 0 1 5.5 3.5h9A2 2 0 0 1 16.5 5.5v6a2 2 0 0 1-2 2H9l-3.5 3v-3H5.5a2 2 0 0 1-2-2Z" fill="none" stroke="currentColor" stroke-width="1.4" stroke-linejoin="round"/></symbol>
   <symbol id="i-x" viewBox="0 0 20 20"><path d="M5.5 5.5l9 9M14.5 5.5l-9 9" stroke="currentColor" stroke-width="1.6" stroke-linecap="round"/></symbol>
+  <symbol id="i-sair" viewBox="0 0 20 20"><path d="M8 3H4.5A1.5 1.5 0 0 0 3 4.5v11A1.5 1.5 0 0 0 4.5 17H8" fill="none" stroke="currentColor" stroke-width="1.4" stroke-linecap="round" stroke-linejoin="round"/><path d="M8 10h9m0 0-3-3m3 3-3 3" fill="none" stroke="currentColor" stroke-width="1.4" stroke-linecap="round" stroke-linejoin="round"/></symbol>
+  <symbol id="i-letra" viewBox="0 0 20 20"><text x="2" y="15" font-size="13" font-family="sans-serif" font-weight="700" fill="currentColor">A</text><text x="12.5" y="16" font-size="7" font-family="sans-serif" font-weight="700" fill="currentColor">A</text></symbol>
+  <symbol id="i-seta-esq" viewBox="0 0 20 20"><path d="M12.5 4.5 6 10l6.5 5.5" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"/></symbol>
+  <symbol id="i-seta-dir" viewBox="0 0 20 20"><path d="M7.5 4.5 14 10l-6.5 5.5" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"/></symbol>
+  <symbol id="i-estrela" viewBox="0 0 20 20"><path d="M10 2.8l1.9 4.6 4.9.4-3.7 3.3 1.1 4.8L10 13.4l-4.2 2.5 1.1-4.8-3.7-3.3 4.9-.4Z" fill="currentColor" stroke="none"/></symbol>
+  <symbol id="i-orelhas" viewBox="0 0 20 20"><path d="M4 8 3 3l4 3M16 8l1-5-4 3" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"/></symbol>
+  <symbol id="i-mascote" viewBox="0 0 40 46">
+    <path d="M10 45V30a10 10 0 0 1 20 0v15Z" fill="#FFFDF9" stroke="#B23A4A" stroke-width=".8" stroke-opacity=".35"/>
+    <path d="M14.5 28.5 17 31l3-2 3 2 2.5-2.5" fill="none" stroke="#B23A4A" stroke-width="1.3" stroke-linecap="round" stroke-linejoin="round"/>
+    <circle cx="20" cy="16" r="11" fill="#FFFDF9" stroke="#4A4560" stroke-width="1"/>
+    <path d="M9.1 16.6A11 11 0 0 1 20 5v22a11 11 0 0 1-10.9-10.4Z" fill="#2A2730"/>
+    <path d="M11.5 7.5 10 3.3l3.6 2.4M28.5 7.5 30 3.3l-3.6 2.4" fill="none" stroke="#4A4560" stroke-width="1.1" stroke-linecap="round" stroke-linejoin="round"/>
+    <circle cx="16" cy="17.5" r="1.5" fill="#B23A4A"/>
+    <circle cx="24" cy="17.5" r="1.5" fill="#B23A4A"/>
+  </symbol>
 </svg>
 
 <div id="loginScreen" class="tela tela-login">
@@ -55,6 +70,10 @@
     <p class="subtitulo">Seu painel do dia, sem cobrança.</p>
     <button id="loginBtn" class="botao botao-primario">Entrar com Google</button>
     <p id="loginStatus" class="texto-status"></p>
+    <div class="mascote-fala">
+      <svg class="mascote-icone"><use href="#i-mascote"/></svg>
+      <p>Uma coisa de cada vez.</p>
+    </div>
   </div>
 </div>
 
@@ -67,15 +86,34 @@
       <p class="cab-data" id="dataHoje"></p>
     </div>
     <div class="cab-widgets">
-      <div class="cab-item mini-cal" id="miniCalendario"></div>
       <div class="cab-item progresso-anel">
         <div class="anel" id="anelProgresso" style="--pct:0"></div>
         <div class="progresso-texto"><strong id="progressoTexto">0/0</strong><span>feitas hoje</span></div>
       </div>
-      <button class="tema-botao" id="botaoTema" aria-label="Alternar tema claro e escuro">
-        <svg class="icone-sol"><use href="#i-sol"/></svg>
-        <svg class="icone-lua"><use href="#i-lua"/></svg>
-      </button>
+      <div class="conta-area">
+        <button id="botaoConta" class="conta-avatar" aria-haspopup="true" aria-expanded="false" aria-label="Conta e preferências">
+          <span id="contaIniciais">--</span>
+        </button>
+        <div id="contaPainel" class="conta-painel" hidden>
+          <div class="conta-quem">
+            <span id="contaNome" class="conta-nome">—</span>
+            <span id="menuEmail" class="conta-email">—</span>
+          </div>
+          <div class="conta-linha">
+            <span class="conta-rotulo"><svg><use href="#i-sol"/></svg>Tema</span>
+            <button class="interruptor" id="interruptorTema" aria-pressed="false" aria-label="Alternar tema escuro" type="button"></button>
+          </div>
+          <div class="conta-linha">
+            <span class="conta-rotulo"><svg><use href="#i-letra"/></svg>Letra</span>
+            <div class="fonte-controle">
+              <button type="button" id="fonteMenos" aria-label="Diminuir tamanho da letra">A−</button>
+              <span id="fonteNivelTexto">Normal</span>
+              <button type="button" id="fonteMais" aria-label="Aumentar tamanho da letra">A+</button>
+            </div>
+          </div>
+          <button id="logoutBtn" class="conta-sair" type="button"><svg><use href="#i-sair"/></svg>Sair</button>
+        </div>
+      </div>
     </div>
   </header>
 
@@ -122,6 +160,17 @@
         <p id="agendaVazio" class="bloco-sub" hidden>Nenhum compromisso marcado pra hoje.</p>
       </article>
 
+      <article class="bloco" data-cor="ceu" data-id="calendario" draggable="true">
+        <div class="bloco-cab">
+          <div class="bloco-titulo-grupo"><span class="bloco-icone"><svg><use href="#i-calendario"/></svg></span><span class="bloco-titulo">Calendário</span></div>
+          <button class="arrastar-alca" aria-label="Reordenar bloco Calendário" tabindex="0"><svg><use href="#i-alca"/></svg></button>
+        </div>
+        <details class="cal-expansivel" open>
+          <summary>Ver mês <svg><use href="#i-seta-dir"/></svg></summary>
+          <div id="painelCal" class="cal-painel"></div>
+        </details>
+      </article>
+
       <article class="bloco" data-cor="lilas" data-id="tarefas" draggable="true">
         <div class="bloco-cab">
           <div class="bloco-titulo-grupo"><span class="bloco-icone"><svg><use href="#i-lista"/></svg></span><span class="bloco-titulo">Tarefas</span></div>
@@ -129,25 +178,6 @@
         </div>
         <ul id="listaTarefas" class="lista-itens"></ul>
         <p id="tarefasVazio" class="bloco-sub" hidden>Nenhuma tarefa pra hoje ainda.</p>
-      </article>
-
-      <article class="bloco" data-cor="areia" data-id="depois" draggable="true">
-        <div class="bloco-cab">
-          <div class="bloco-titulo-grupo"><span class="bloco-icone"><svg><use href="#i-bandeja"/></svg></span><span class="bloco-titulo">Fazer depois</span></div>
-          <button class="botao-icone-destaque" id="addDepoisBtn" aria-label="Novo item pra depois" type="button"><svg><use href="#i-mais"/></svg></button>
-        </div>
-        <p class="bloco-sub" style="margin-bottom:10px;">Sem pressa — fica guardado aqui até você ter espaço.</p>
-        <div id="listaDepois" class="chips"></div>
-        <p id="depoisVazio" class="bloco-sub" hidden>Nada guardado pra depois agora.</p>
-      </article>
-
-      <article class="bloco" data-cor="lilas" data-id="mente" draggable="true">
-        <div class="bloco-cab">
-          <div class="bloco-titulo-grupo"><span class="bloco-icone"><svg><use href="#i-nuvem"/></svg></span><span class="bloco-titulo">Descarregar a mente</span></div>
-          <button class="arrastar-alca" aria-label="Reordenar bloco Descarregar a mente" tabindex="0"><svg><use href="#i-alca"/></svg></button>
-        </div>
-        <textarea class="mente-area" id="menteTexto" placeholder="O que está passando pela cabeça agora? Pode escrever sem se preocupar em organizar."></textarea>
-        <p class="mente-legenda">Fica só aqui, salvo automaticamente.</p>
       </article>
 
       <article class="bloco" data-cor="menta" data-id="autocuidado" draggable="true">
@@ -214,7 +244,26 @@
         </div>
       </article>
 
-      <article class="bloco" data-cor="areia" data-id="lembrar" draggable="true">
+      <article class="bloco bloco--maior" data-cor="lilas" data-id="mente" draggable="true">
+        <div class="bloco-cab">
+          <div class="bloco-titulo-grupo"><span class="bloco-icone"><svg><use href="#i-nuvem"/></svg></span><span class="bloco-titulo">Tira isso da cabeça</span></div>
+          <button class="arrastar-alca" aria-label="Reordenar bloco Tira isso da cabeça" tabindex="0"><svg><use href="#i-alca"/></svg></button>
+        </div>
+        <textarea class="mente-area" id="menteTexto" placeholder="O que está passando pela cabeça agora? Pode escrever sem se preocupar em organizar."></textarea>
+        <p class="mente-legenda">Fica só aqui, salvo automaticamente.</p>
+      </article>
+
+      <article class="bloco bloco--maior" data-cor="areia" data-id="depois" draggable="true">
+        <div class="bloco-cab">
+          <div class="bloco-titulo-grupo"><span class="bloco-icone"><svg><use href="#i-bandeja"/></svg></span><span class="bloco-titulo">Pode esperar</span></div>
+          <button class="botao-icone-destaque" id="addDepoisBtn" aria-label="Novo item pra depois" type="button"><svg><use href="#i-mais"/></svg></button>
+        </div>
+        <p class="bloco-sub" style="margin-bottom:10px;">Sem pressa — fica guardado aqui até você ter espaço.</p>
+        <div id="listaDepois" class="chips"></div>
+        <p id="depoisVazio" class="bloco-sub" hidden>Nada guardado pra depois agora.</p>
+      </article>
+
+      <article class="bloco bloco--maior" data-cor="areia" data-id="lembrar" draggable="true">
         <div class="bloco-cab">
           <div class="bloco-titulo-grupo"><span class="bloco-icone"><svg><use href="#i-pin"/></svg></span><span class="bloco-titulo">Não esquecer</span></div>
           <button class="arrastar-alca" aria-label="Reordenar bloco Não esquecer" tabindex="0"><svg><use href="#i-alca"/></svg></button>
@@ -226,13 +275,16 @@
         </form>
       </article>
 
-      <article class="bloco" data-cor="dourado" data-id="conquistas" draggable="true">
+      <article class="bloco bloco--maior" data-cor="dourado" data-id="conquistas" draggable="true">
         <div class="bloco-cab">
-          <div class="bloco-titulo-grupo"><span class="bloco-icone"><svg><use href="#i-pata"/></svg></span><span class="bloco-titulo">Conquistas do dia</span></div>
-          <button class="arrastar-alca" aria-label="Reordenar bloco Conquistas do dia" tabindex="0"><svg><use href="#i-alca"/></svg></button>
+          <div class="bloco-titulo-grupo"><span class="bloco-icone"><svg><use href="#i-pata"/></svg></span><span class="bloco-titulo">Olha o que eu consegui</span></div>
+          <button class="arrastar-alca" aria-label="Reordenar bloco Olha o que eu consegui" tabindex="0"><svg><use href="#i-alca"/></svg></button>
         </div>
         <div class="medalhas" id="medalhas"></div>
-        <p id="conquistasVazio" class="bloco-sub" hidden>Ainda sem conquistas — até as pequenas contam, o dia não acabou.</p>
+        <div id="conquistasVazio" class="mascote-fala" hidden>
+          <svg class="mascote-icone"><use href="#i-mascote"/></svg>
+          <p id="conquistasVazioTexto">Ainda sem conquistas — até as pequenas contam, o dia não acabou.</p>
+        </div>
         <form id="formConquista" class="mini-form">
           <input type="text" id="campoConquista" maxlength="80" placeholder="Registrar uma pequena vitória…">
           <button type="submit" class="botao-icone-destaque" aria-label="Registrar conquista"><svg><use href="#i-mais"/></svg></button>
@@ -288,21 +340,11 @@
       <div class="tela-cab"><h2 class="tela-titulo">Configurações</h2></div>
       <div class="cartao-simples config-lista">
         <div class="config-item">
-          <div class="config-item-texto"><strong id="menuEmail">—</strong><span>Conta conectada</span></div>
-        </div>
-        <div class="config-item">
-          <div class="config-item-texto"><strong>Tema escuro</strong><span>Combina com pouca luz e telas à noite</span></div>
-          <button class="interruptor" id="interruptorTema" aria-pressed="false" aria-label="Alternar tema escuro" type="button"></button>
-        </div>
-        <div class="config-item">
           <div class="config-item-texto"><strong>Notificações</strong><span>Lembrete no aparelho, mesmo com o app fechado</span></div>
           <button class="botao botao-secundario" id="notifBtn" style="width:auto;padding:9px 16px;" type="button">Ativar</button>
         </div>
-        <div class="config-item">
-          <div class="config-item-texto"><strong>Sair</strong><span>Desconectar desta conta</span></div>
-          <button class="botao botao-secundario" id="logoutBtn" style="width:auto;padding:9px 16px;" type="button">Sair</button>
-        </div>
       </div>
+      <p class="bloco-sub">Conta, tema e tamanho da letra ficam no menu do avatar, no canto superior do cabeçalho.</p>
     </div>
   </div>
 
