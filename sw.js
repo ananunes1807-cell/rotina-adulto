@@ -1,7 +1,7 @@
-const CACHE_NAME = 'rotina-adulto-v10';
+const CACHE_NAME = 'rotina-adulto-v11';
 const FILES = [
   './index.html',
-  './styles.css?v=11',
+  './styles.css?v=12',
   './app.js',
   './manifest.webmanifest',
   './icon-192.png',
@@ -50,18 +50,27 @@ self.addEventListener('push', event => {
       icon: './icon-192.png',
       badge: './icon-192.png',
       tag: payload.data?.tarefaId || 'rotina-lembrete',
-      renotify: true
+      renotify: true,
+      data: payload.data || {}
     })
   );
 });
 
+// Ao clicar na notificação: se o app já está aberto numa aba, manda a frase
+// por postMessage pra ele falar na hora; senão abre uma janela nova com
+// ?falar= na URL, que o app.js lê assim que carrega (ver falarSeVeioDeNotificacao).
 self.addEventListener('notificationclick', event => {
   event.notification.close();
+  const falar = event.notification.data?.falar;
+  const destino = './index.html' + (falar ? ('?falar=' + encodeURIComponent(falar)) : '');
   event.waitUntil(
     self.clients.matchAll({ type: 'window', includeUncontrolled: true }).then(clientsArr => {
       const existente = clientsArr.find(c => c.url.includes(self.registration.scope));
-      if (existente) return existente.focus();
-      return self.clients.openWindow('./index.html');
+      if (existente) {
+        if (falar) existente.postMessage({ tipo: 'falar-lembrete', texto: falar });
+        return existente.focus();
+      }
+      return self.clients.openWindow(destino);
     })
   );
 });

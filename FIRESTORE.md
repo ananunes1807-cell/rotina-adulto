@@ -33,11 +33,18 @@ Campos do documento:
       tipo: "tarefa",          // tarefa | compromisso | depois | habito | autocuidado
       nome: "Escovar os dentes",
       categoria: "higiene",    // higiene | casa | trabalho | saude | outro — tarefa e depois
-      horario: "08:00",        // HH:mm — tarefa e compromisso
-      dias: [0,1,2,3,4,5,6],   // 0=domingo ... 6=sábado. [] = todo dia — tarefa e compromisso
+      horario: "08:00",        // HH:mm, opcional em qualquer tipo agora
+      horarioFim: "08:15",     // HH:mm opcional — fim do compromisso/bloco de tempo
+      diaInteiro: false,        // true = ignora horario/horarioFim, evento do dia inteiro
+      dias: [0,1,2,3,4,5,6],   // 0=domingo ... 6=sábado. [] = todo dia — só tarefa/compromisso controlam visibilidade por dia
       local: "",                // texto livre, só compromisso
       icone: "comprimido",      // comprimido | gota | tigela | lua | coracao — só autocuidado
       prioridade: false,        // até 3 tarefas marcadas viram "Prioridades" do dia
+      lembrete: {                // opcional, em qualquer tipo
+        ativo: false,
+        minutosAntes: 10,        // 0 | 5 | 10 | 15 | 30 | número customizado
+        falar: false             // além da notificação, usar a voz (Rotina Falante) quando o app está aberto
+      },
       ativa: true,
       ordem: 1,
       criadoEm: "2026-07-22T00:00:00.000Z"
@@ -58,10 +65,24 @@ Campos do documento:
   humor:    { "2026-07-22": { humor:"calma", energia:"media" } },   // humor: calma|ok|agitada|cansada · energia: baixa|media|alta
   conquistasManuais: { "2026-07-22": [{ id: "uuid", texto: "Consegui sair da cama antes do meio-dia" }] },
 
-  // "Não esquecer": lembretes avulsos, sem data — ficam até você apagar
+  // "Não esquecer": lembretes avulsos, sem data — ficam até você apagar.
+  // horario é opcional; quando presente, o lembrete aparece na Agenda do dia
+  // e pode ser falado pela Rotina Falante, todo dia nesse horário.
   lembretes: [
-    { id: "uuid", texto: "Levar guarda-chuva", criadoEm: "2026-07-22T00:00:00.000Z" }
+    { id: "uuid", texto: "Levar guarda-chuva", horario: null, criadoEm: "2026-07-22T00:00:00.000Z" }
   ],
+
+  // Preferências da Rotina Falante (voz), por usuária:
+  voz: {
+    ativo: false,
+    volume: 1,                 // 0 a 1
+    velocidade: 1,              // 0.5 a 2 (rate do SpeechSynthesis)
+    vozNome: null,               // null = escolhe automaticamente (prefere pt-BR feminina)
+    falarAutomatico: true,       // liga/desliga o aviso falado no horário do lembrete
+    minutosAntesPadrao: 10,      // usado quando o item não define o próprio lembrete
+    falarProximoItem: false,     // depois de concluir algo, fala o próximo item da agenda
+    naoPerturbe: { ativo: false, inicio: "22:00", fim: "07:00" }
+  },
 
   // Personalização do painel (modo "Personalizar painel" em Config.): ordem,
   // visibilidade, cor/ícone/título e largura de cada card. A ordem do array
@@ -77,7 +98,8 @@ Campos do documento:
         icone: null,              // null = ícone padrão; ou um id de símbolo (ex: "i-estrela")
         titulo: null               // null = título padrão; ou texto customizado
         // cards personalizados (tipo:"personalizado") também têm:
-        // itens: [ { id:"uuid", texto:"...", feita:false } ]
+        // itens: [ { id:"uuid", texto:"...", feita:false, horario:null } ]
+        // (horario opcional aqui também — todo dia nesse horário, sem repetição por dia da semana)
       }
     ]
   },
@@ -102,6 +124,14 @@ Campos do documento:
 > antiga pra `itens` com `tipo: "tarefa"` e remove o campo velho. Não precisa
 > fazer nada manualmente. Da mesma forma, contas sem o campo `painel` ganham
 > a lista padrão dos 13 cards de sistema no primeiro carregamento.
+
+> `horario`/`horarioFim`/`diaInteiro`/`lembrete` são opcionais em **qualquer**
+> tipo de item. Só `tarefa` e `compromisso` usam `dias` pra decidir se
+> aparecem hoje ou não — em `depois`, `habito` e `autocuidado` o horário é
+> só informativo (mostra na Agenda e pode disparar lembrete falado), não
+> muda se o item aparece no card de origem. Isso preserva o comportamento
+> que já existia (hábito e autocuidado sempre visíveis, fazer-depois sempre
+> na lista até apagar).
 
 ### Por que `concluidas` é um mapa por data, e não um campo dentro do item
 

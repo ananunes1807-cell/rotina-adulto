@@ -308,6 +308,14 @@ button{ font-family:inherit; cursor:pointer; }
 #painel:not(.modo-personalizar) .bloco-opcoes-btn{ display:none; }
 #painel.modo-personalizar .bloco{ outline:1.5px dashed var(--anel); outline-offset:3px; }
 
+/* ---------- Barra da Rotina Falante ---------- */
+.barra-voz{
+  max-width:1240px; margin:0 auto 6px; padding:0 clamp(16px,4vw,32px);
+  display:flex; flex-wrap:wrap; gap:8px;
+}
+.barra-voz .barra-btn{ border-color:var(--anel); color:var(--lilas-tinta); }
+#pararFalarBtn{ border-color:var(--rosa-tinta); color:var(--rosa-tinta); }
+
 /* ---------- Barra de personalização ---------- */
 .barra-personalizar{
   max-width:1240px; margin:0 auto 14px; padding:14px 16px; background:var(--lilas-fundo);
@@ -429,6 +437,7 @@ button{ font-family:inherit; cursor:pointer; }
   font-family:var(--fonte-corpo); font-size:.82rem; background:var(--superficie); color:var(--tinta);
 }
 .mini-form input::placeholder{ color:var(--tinta-suave); }
+.mini-form-hora{ flex:0 0 auto; width:6.2rem; }
 
 /* ---------- Tira isso da cabeça ---------- */
 .mente-area{
@@ -450,7 +459,8 @@ button{ font-family:inherit; cursor:pointer; }
 }
 :root[data-tema="escuro"] .toque{ border-color:rgba(255,255,255,.04); }
 .toque svg{ width:1.05rem; height:1.05rem; color:var(--cor-tinta); flex:0 0 auto; }
-.toque-marca{ margin-left:auto; width:1.3rem; height:1.3rem; min-width:20px; min-height:20px; border-radius:7px; border:1.8px solid var(--anel); background:transparent; padding:0; position:relative; flex:0 0 auto; }
+.toque-nome{ flex:1; min-width:0; }
+.toque-marca{ margin-left:0; width:1.3rem; height:1.3rem; min-width:20px; min-height:20px; border-radius:7px; border:1.8px solid var(--anel); background:transparent; padding:0; position:relative; flex:0 0 auto; }
 .toque-marca svg{ width:.7rem; height:.7rem; color:#fff; position:absolute; inset:0; margin:auto; opacity:0; transform:scale(.5); }
 .toque.feita{ opacity:.6; }
 .toque.feita .toque-marca{ background:var(--cor-tinta); border-color:var(--cor-tinta); }
@@ -458,6 +468,9 @@ button{ font-family:inherit; cursor:pointer; }
 .toque-lixo{ margin-left:6px; background:none; border:none; color:var(--tinta-suave); padding:.3rem; min-width:28px; min-height:28px; border-radius:50%; }
 .toque-lixo svg{ width:.85rem; height:.85rem; }
 .toque-lixo:hover{ background:var(--linha); }
+.toque-falar{ background:none; border:none; color:var(--tinta-suave); padding:.3rem; min-width:28px; min-height:28px; border-radius:50%; flex:0 0 auto; }
+.toque-falar svg{ width:.85rem; height:.85rem; }
+.toque-falar:hover{ background:var(--linha); }
 
 /* ---------- Hábitos ---------- */
 .habito{ display:flex; align-items:center; gap:10px; padding:.4rem 0; flex-wrap:wrap; }
@@ -531,6 +544,23 @@ button{ font-family:inherit; cursor:pointer; }
   width:100%; margin-top:6px; padding:.75rem; min-height:44px; border-radius:10px; border:1.5px solid var(--linha);
   font-family:var(--fonte-corpo); font-size:.95rem; color:var(--tinta); background:var(--creme);
 }
+.campo-com-microfone{ display:flex; gap:8px; align-items:center; margin-top:6px; }
+.campo-com-microfone input{ margin-top:0; }
+.campo-com-microfone .botao-icone-destaque{ flex:0 0 auto; }
+.campo-com-microfone .botao-icone-destaque.gravando{ background:var(--rosa-tinta); animation:pulsar-gravacao 1s ease-in-out infinite; }
+@keyframes pulsar-gravacao{ 0%,100%{ box-shadow:0 0 0 0 rgba(168,53,95,.4); } 50%{ box-shadow:0 0 0 6px rgba(168,53,95,0); } }
+.linha-horarios{ display:flex; gap:10px; }
+.linha-horarios label{ flex:1; min-width:0; }
+.mais-opcoes{ margin-top:16px; }
+.mais-opcoes summary{
+  cursor:pointer; list-style:none; display:flex; align-items:center; gap:6px;
+  font-size:.85rem; font-weight:600; color:var(--lilas-tinta);
+}
+.mais-opcoes summary::-webkit-details-marker{ display:none; }
+.mais-opcoes summary svg{ width:11px; height:11px; transition:transform .15s ease; }
+.mais-opcoes[open] summary svg{ transform:rotate(90deg); }
+.mais-opcoes .dias-fieldset:first-of-type{ margin-top:14px; }
+
 .dia-anterior-lista{ margin-top:16px; max-height:40vh; overflow-y:auto; }
 .dias-fieldset{ border:none; padding:0; margin-top:16px; }
 .dias-fieldset legend{ font-size:.85rem; color:var(--tinta-suave); font-weight:600; padding:0; }
@@ -612,6 +642,13 @@ button{ font-family:inherit; cursor:pointer; }
 .interruptor::after{ content:''; position:absolute; top:2px; left:2px; bottom:2px; aspect-ratio:1; border-radius:50%; background:#fff; box-shadow:var(--sombra); transition:transform .18s ease; }
 .interruptor[aria-pressed="true"]{ background:var(--lilas-tinta); }
 .interruptor[aria-pressed="true"]::after{ transform:translateX(1.1rem); }
+.controle-slider{ flex:1; max-width:12rem; min-width:6rem; accent-color:var(--lilas-tinta); }
+.config-item select{
+  width:auto; max-width:11rem; padding:.5rem .6rem; min-height:38px; border-radius:10px; border:1.5px solid var(--linha);
+  font-family:var(--fonte-corpo); font-size:.82rem; color:var(--tinta); background:var(--creme);
+}
+.config-item .linha-horarios label{ margin-top:0; font-size:.78rem; }
+.config-item .linha-horarios input{ margin-top:4px; }
 
 /* ---------- Navegação inferior (mobile) ---------- */
 @media (max-width:759px){

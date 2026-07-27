@@ -172,8 +172,9 @@ async function checarRotinas(env) {
 
   for (const usuario of usuarios) {
     const dados = usuario.dados;
-    // "itens" substituiu "tarefas" (ver FIRESTORE.md); só tarefa e
-    // compromisso têm horário e fazem sentido notificar.
+    // "itens" substituiu "tarefas" (ver FIRESTORE.md). Qualquer tipo pode ter
+    // horário agora — não só tarefa/compromisso — então todos entram na
+    // checagem; dia inteiro não tem hora marcada, então nunca bate.
     const itens = dados.itens || [];
     const concluidasHoje = (dados.concluidas || {})[dataISO] || [];
     const notificadas = { ...(dados.notificadas || {}) };
@@ -181,20 +182,33 @@ async function checarRotinas(env) {
     const tokens = (dados.pushTokens || []).map(t => t.token).filter(Boolean);
 
     const devidas = itens.filter(t =>
-      (t.tipo === 'tarefa' || t.tipo === 'compromisso') &&
-      t.ativa && t.horario === hhmm &&
+      t.ativa !== false && t.horario && !t.diaInteiro &&
+      gatilhoDoItem(t) === hhmm &&
       (!t.dias || t.dias.length === 0 || t.dias.includes(diaSemana)) &&
       !concluidasHoje.includes(t.id) &&
       !notificadasHoje.has(t.id)
     );
 
-    if (devidas.length === 0 || tokens.length === 0) continue;
+    // Lembretes avulsos ("Não esquecer") também podem ter horário e repetem
+    // todo dia — não têm id em `itens`, então usam prefixo próprio na chave
+    // de "já notificado" pra não colidir.
+    const lembretesDevidos = (dados.lembretes || []).filter(l =>
+      l.horario === hhmm && !notificadasHoje.has('lembrete:' + l.id)
+    );
+
+    if ((devidas.length === 0 && lembretesDevidos.length === 0) || tokens.length === 0) continue;
 
     for (const tarefa of devidas) {
       for (const token of tokens) {
-        await enviarFcm(env, accessToken, token, tarefa);
+        await enviarFcm(env, accessToken, token, tarefa.id, tarefa.nome, fraseFalada(tarefa));
       }
       notificadasHoje.add(tarefa.id);
+    }
+    for (const lembrete of lembretesDevidos) {
+      for (const token of tokens) {
+        await enviarFcm(env, accessToken, token, 'lembrete-' + lembrete.id, lembrete.texto, 'Lembrete: ' + lembrete.texto);
+      }
+      notificadasHoje.add('lembrete:' + lembrete.id);
     }
 
     notificadas[dataISO] = [...notificadasHoje];
@@ -202,7 +216,26 @@ async function checarRotinas(env) {
   }
 }
 
-async function enviarFcm(env, accessToken, token, tarefa) {
+// Se o item tem lembrete falado configurado, o aviso dispara antes do
+// horário (minutosAntes); senão dispara exatamente no horário, como antes.
+function gatilhoDoItem(item) {
+  if (!item.lembrete?.ativo) return item.horario;
+  return subtrairMinutos(item.horario, item.lembrete.minutosAntes || 0);
+}
+function subtrairMinutos(hhmm, minutos) {
+  const [h, m] = hhmm.split(':').map(Number);
+  let total = h * 60 + m - minutos;
+  total = ((total % 1440) + 1440) % 1440;
+  return `${String(Math.floor(total / 60)).padStart(2, '0')}:${String(total % 60).padStart(2, '0')}`;
+}
+function fraseFalada(item) {
+  if (item.lembrete?.ativo && item.lembrete.minutosAntes > 0) {
+    return `Daqui a pouco: ${item.nome}, às ${item.horario}.`;
+  }
+  return `Hora de: ${item.nome}.`;
+}
+
+async function enviarFcm(env, accessToken, token, id, nome, frase) {
   await fetch(
     `https://fcm.googleapis.com/v1/projects/${env.PROJECT_ID}/messages:send`,
     {
@@ -211,8 +244,8 @@ async function enviarFcm(env, accessToken, token, tarefa) {
       body: JSON.stringify({
         message: {
           token,
-          notification: { title: 'Hora de: ' + tarefa.nome, body: 'Um passo de cada vez. Toca aqui quando fizer.' },
-          data: { tarefaId: tarefa.id }
+          notification: { title: 'Hora de: ' + nome, body: 'Um passo de cada vez. Toca aqui quando fizer.' },
+          data: { tarefaId: id, falar: frase }
         }
       })
     }

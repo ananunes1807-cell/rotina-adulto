@@ -8,7 +8,7 @@
 <link rel="manifest" href="./manifest.webmanifest">
 <link rel="icon" href="./icon-192.png">
 <link rel="apple-touch-icon" href="./icon-192.png">
-<link rel="stylesheet" href="./styles.css?v=11">
+<link rel="stylesheet" href="./styles.css?v=12">
 </head>
 <body>
 
@@ -56,6 +56,11 @@
   <symbol id="i-olho" viewBox="0 0 20 20"><path d="M2 10s3-5.5 8-5.5S18 10 18 10s-3 5.5-8 5.5S2 10 2 10Z" fill="none" stroke="currentColor" stroke-width="1.4" stroke-linejoin="round"/><circle cx="10" cy="10" r="2.4" fill="none" stroke="currentColor" stroke-width="1.4"/></symbol>
   <symbol id="i-olho-fechado" viewBox="0 0 20 20"><path d="M2.5 2.5l15 15M6 6.2C3.6 7.6 2 10 2 10s3 5.5 8 5.5c1.5 0 2.8-.4 3.9-1M9 4.6c.3 0 .6-.1 1-.1 5 0 8 5.5 8 5.5s-.7 1.3-1.9 2.6M8.2 11.8a2.4 2.4 0 0 1 3.4-3.4" fill="none" stroke="currentColor" stroke-width="1.4" stroke-linecap="round" stroke-linejoin="round"/></symbol>
   <symbol id="i-copiar" viewBox="0 0 20 20"><rect x="7" y="7" width="10" height="10" rx="2" fill="none" stroke="currentColor" stroke-width="1.4"/><path d="M4.5 13.5H4a1.5 1.5 0 0 1-1.5-1.5V4A1.5 1.5 0 0 1 4 2.5h8A1.5 1.5 0 0 1 13.5 4v.5" fill="none" stroke="currentColor" stroke-width="1.4" stroke-linecap="round"/></symbol>
+  <symbol id="i-microfone" viewBox="0 0 20 20"><rect x="7.3" y="2.5" width="5.4" height="9.5" rx="2.7" fill="none" stroke="currentColor" stroke-width="1.4"/><path d="M5 9.5a5 5 0 0 0 10 0M10 14.5v3M7.3 17.5h5.4" fill="none" stroke="currentColor" stroke-width="1.4" stroke-linecap="round" stroke-linejoin="round"/></symbol>
+  <symbol id="i-alto-falante" viewBox="0 0 20 20"><path d="M3 8v4h3l4.5 3.5v-10.5L6 8H3Z" fill="currentColor" stroke="none"/><path d="M14 7.2a4 4 0 0 1 0 5.6M16.3 4.8a7.5 7.5 0 0 1 0 10.4" fill="none" stroke="currentColor" stroke-width="1.4" stroke-linecap="round"/></symbol>
+  <symbol id="i-mudo" viewBox="0 0 20 20"><path d="M3 8v4h3l4.5 3.5v-10.5L6 8H3Z" fill="currentColor" stroke="none"/><path d="M14 8.3 17.5 11.7M17.5 8.3 14 11.7" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"/></symbol>
+  <symbol id="i-stop" viewBox="0 0 20 20"><rect x="5" y="5" width="10" height="10" rx="2" fill="currentColor" stroke="none"/></symbol>
+  <symbol id="i-livro" viewBox="0 0 20 20"><path d="M10 4.5S8 3 4.5 3v11.5c3.5 0 5.5 1.5 5.5 1.5s2-1.5 5.5-1.5V3c-3.5 0-5.5 1.5-5.5 1.5Z" fill="none" stroke="currentColor" stroke-width="1.4" stroke-linejoin="round"/><path d="M10 4.5v12" fill="none" stroke="currentColor" stroke-width="1.4"/></symbol>
   <symbol id="i-mascote" viewBox="0 0 40 46">
     <path d="M10 45V30a10 10 0 0 1 20 0v15Z" fill="#FFFDF9" stroke="#B23A4A" stroke-width=".8" stroke-opacity=".35"/>
     <path d="M14.5 28.5 17 31l3-2 3 2 2.5-2.5" fill="none" stroke="#B23A4A" stroke-width="1.3" stroke-linecap="round" stroke-linejoin="round"/>
@@ -121,6 +126,13 @@
       </div>
     </div>
   </header>
+
+  <div class="barra-voz" id="barraVoz">
+    <button type="button" id="lerMeuDiaBtn" class="botao botao-secundario barra-btn" title="Ouvir um resumo do seu dia"><svg><use href="#i-livro"/></svg>Ler meu dia</button>
+    <button type="button" id="oQueFacoBtn" class="botao botao-secundario barra-btn" title="Ouvir o que fazer agora"><svg><use href="#i-alvo"/></svg>O que faço agora?</button>
+    <button type="button" id="repetirFalaBtn" class="botao botao-secundario barra-btn" title="Repetir a última mensagem falada"><svg><use href="#i-alto-falante"/></svg>Repetir</button>
+    <button type="button" id="pararFalarBtn" class="botao botao-secundario barra-btn" title="Parar a voz" hidden><svg><use href="#i-stop"/></svg>Parar de falar</button>
+  </div>
 
   <p id="notifAviso" class="aviso" hidden></p>
 
@@ -280,6 +292,7 @@
         <div id="listaLembretes" class="chips"></div>
         <form id="formLembrete" class="mini-form">
           <input type="text" id="campoLembrete" maxlength="80" placeholder="Adicionar lembrete rápido…">
+          <input type="time" id="campoLembreteHorario" class="mini-form-hora" aria-label="Horário (opcional)">
           <button type="submit" class="botao-icone-destaque" aria-label="Adicionar lembrete"><svg><use href="#i-mais"/></svg></button>
         </form>
       </article>
@@ -366,6 +379,52 @@
           <button class="interruptor" id="interruptorPersonalizar" aria-pressed="false" aria-label="Ativar modo de personalizar painel" type="button"></button>
         </div>
       </div>
+
+      <div class="tela-cab"><h2 class="tela-titulo">Rotina Falante</h2></div>
+      <div class="cartao-simples config-lista">
+        <div class="config-item">
+          <div class="config-item-texto"><strong>Ativar Rotina Falante</strong><span>Liga a voz: avisos automáticos e "falar o próximo item"</span></div>
+          <button class="interruptor" id="interruptorVoz" aria-pressed="false" aria-label="Ativar Rotina Falante" type="button"></button>
+        </div>
+        <div class="config-item">
+          <div class="config-item-texto"><strong>Avisar automaticamente</strong><span>Fala sozinho no horário do lembrete de cada item</span></div>
+          <button class="interruptor" id="interruptorFalarAutomatico" aria-pressed="true" aria-label="Ativar aviso falado automático" type="button"></button>
+        </div>
+        <div class="config-item">
+          <div class="config-item-texto"><strong>Falar o próximo item</strong><span>Ao concluir algo, avisa qual é o próximo passo</span></div>
+          <button class="interruptor" id="interruptorFalarProximo" aria-pressed="false" aria-label="Ativar falar o próximo item" type="button"></button>
+        </div>
+        <div class="config-item">
+          <div class="config-item-texto"><strong>Volume</strong></div>
+          <input type="range" id="campoVozVolume" min="0" max="1" step="0.1" value="1" class="controle-slider" aria-label="Volume da voz">
+        </div>
+        <div class="config-item">
+          <div class="config-item-texto"><strong>Velocidade da voz</strong></div>
+          <input type="range" id="campoVozVelocidade" min="0.6" max="1.6" step="0.1" value="1" class="controle-slider" aria-label="Velocidade da voz">
+        </div>
+        <div class="config-item">
+          <div class="config-item-texto"><strong>Antecedência padrão</strong><span>Usada quando o item não define a própria antecedência</span></div>
+          <select id="campoVozMinutosPadrao" aria-label="Antecedência padrão do aviso falado">
+            <option value="0">No horário exato</option>
+            <option value="5">5 minutos antes</option>
+            <option value="10" selected>10 minutos antes</option>
+            <option value="15">15 minutos antes</option>
+            <option value="30">30 minutos antes</option>
+          </select>
+        </div>
+        <div class="config-item">
+          <div class="config-item-texto"><strong>Não perturbe</strong><span>Não fala automaticamente nesse período</span></div>
+          <button class="interruptor" id="interruptorNaoPerturbe" aria-pressed="false" aria-label="Ativar Não perturbe" type="button"></button>
+        </div>
+        <div class="config-item" id="naoPerturbeHorarios" hidden>
+          <div class="linha-horarios" style="flex:1;">
+            <label>Início<input type="time" id="campoNaoPerturbeInicio" value="22:00"></label>
+            <label>Fim<input type="time" id="campoNaoPerturbeFim" value="07:00"></label>
+          </div>
+        </div>
+      </div>
+      <p class="bloco-sub">Os botões 🔊, "Ler meu dia" e "O que faço agora?" funcionam mesmo com a Rotina Falante desligada — o interruptor acima liga só os avisos automáticos e o "falar o próximo item".</p>
+
       <p class="bloco-sub">Conta, tema e tamanho da letra ficam no menu do avatar, no canto superior do cabeçalho.</p>
     </div>
   </div>
@@ -427,8 +486,12 @@
     </label>
     <label>
       Nome
-      <input type="text" id="campoNome" required maxlength="60" placeholder="Ex: escovar os dentes">
+      <div class="campo-com-microfone">
+        <input type="text" id="campoNome" required maxlength="60" placeholder="Ex: escovar os dentes">
+        <button type="button" id="microfoneCadastroBtn" class="botao-icone-destaque" aria-label="Falar para cadastrar este item por voz" title="Falar para cadastrar"><svg><use href="#i-microfone"/></svg></button>
+      </div>
     </label>
+    <p id="microfoneStatus" class="texto-status" hidden></p>
     <label id="grupoCategoria">
       Categoria
       <select id="campoCategoria">
@@ -439,26 +502,23 @@
         <option value="outro">✨ Outro</option>
       </select>
     </label>
-    <label id="grupoHorario">
-      Horário
-      <input type="time" id="campoHorario">
+    <div class="linha-horarios">
+      <label id="grupoHorario">
+        Horário (opcional)
+        <input type="time" id="campoHorario">
+      </label>
+      <label id="grupoHorarioFim">
+        Horário final (opcional)
+        <input type="time" id="campoHorarioFim">
+      </label>
+    </div>
+    <label class="linha-checkbox">
+      <input type="checkbox" id="campoDiaInteiro"> O dia inteiro
     </label>
     <label id="grupoLocal">
       Local (opcional)
       <input type="text" id="campoLocal" maxlength="60" placeholder="Ex: consultório, chamada de vídeo">
     </label>
-    <fieldset class="dias-fieldset" id="grupoDias">
-      <legend>Repetir em</legend>
-      <div class="dias-grade" id="diasGrade">
-        <label><input type="checkbox" value="0" checked> dom</label>
-        <label><input type="checkbox" value="1" checked> seg</label>
-        <label><input type="checkbox" value="2" checked> ter</label>
-        <label><input type="checkbox" value="3" checked> qua</label>
-        <label><input type="checkbox" value="4" checked> qui</label>
-        <label><input type="checkbox" value="5" checked> sex</label>
-        <label><input type="checkbox" value="6" checked> sáb</label>
-      </div>
-    </fieldset>
     <fieldset class="dias-fieldset" id="grupoIcone">
       <legend>Ícone</legend>
       <div class="icone-escolha" id="iconeEscolha">
@@ -473,6 +533,49 @@
       <input type="checkbox" id="campoPrioridade"> Marcar como prioridade (máx. 3 por dia)
     </label>
     <p id="prioridadeAviso" class="texto-status" hidden>Já tem 3 tarefas em destaque hoje — desmarque uma antes de adicionar outra.</p>
+
+    <details class="mais-opcoes" id="maisOpcoes">
+      <summary>Mais opções <svg><use href="#i-seta-dir"/></svg></summary>
+
+      <fieldset class="dias-fieldset" id="grupoDias">
+        <legend>Repetir em</legend>
+        <div class="dias-grade" id="diasGrade">
+          <label><input type="checkbox" value="0" checked> dom</label>
+          <label><input type="checkbox" value="1" checked> seg</label>
+          <label><input type="checkbox" value="2" checked> ter</label>
+          <label><input type="checkbox" value="3" checked> qua</label>
+          <label><input type="checkbox" value="4" checked> qui</label>
+          <label><input type="checkbox" value="5" checked> sex</label>
+          <label><input type="checkbox" value="6" checked> sáb</label>
+        </div>
+      </fieldset>
+
+      <fieldset class="dias-fieldset">
+        <legend>Lembrete</legend>
+        <label class="linha-checkbox">
+          <input type="checkbox" id="campoLembreteAtivo"> Ativar lembrete pra este item
+        </label>
+        <label id="grupoLembreteMinutos">
+          Avisar
+          <select id="campoLembreteMinutos">
+            <option value="0">No horário exato</option>
+            <option value="5">5 minutos antes</option>
+            <option value="10" selected>10 minutos antes</option>
+            <option value="15">15 minutos antes</option>
+            <option value="30">30 minutos antes</option>
+            <option value="custom">Horário personalizado…</option>
+          </select>
+        </label>
+        <label id="grupoLembreteCustom" hidden>
+          Quantos minutos antes
+          <input type="number" id="campoLembreteCustom" min="1" max="720" value="45">
+        </label>
+        <label class="linha-checkbox">
+          <input type="checkbox" id="campoLembreteFalar"> Falar este lembrete (Rotina Falante)
+        </label>
+      </fieldset>
+    </details>
+
     <div class="form-acoes">
       <button type="button" id="excluirItem" class="botao botao-secundario" hidden>Excluir</button>
       <button type="button" id="cancelarItem" class="botao botao-secundario">Cancelar</button>

@@ -258,6 +258,7 @@ async function marcarConcluida(id, valor, data = hojeISO()) {
   if (valor) lista.add(id); else lista.delete(id);
   mapa[data] = [...lista];
   await updateDoc(doc(db, 'usuarios', uid), { concluidas: mapa });
+  if (valor && data === hojeISO() && prefsVoz().falarProximoItem) falarProximoAposConcluir(id);
 }
 async function excluirItem(id) {
   if (!confirm('Excluir este item? Essa ação não pode ser desfeita.')) return;
@@ -265,28 +266,37 @@ async function excluirItem(id) {
   await updateDoc(doc(db, 'usuarios', uid), { itens });
 }
 
-function criarLinhaItem(item, { data = hojeISO(), comAcoes = false, comChat = false, semCheck = false } = {}) {
+function criarLinhaItem(item, { data = hojeISO(), comAcoes = false, comChat = false, semCheck = false, comFalar = true } = {}) {
   const feita = !semCheck && estaConcluida(item.id, data);
   const li = document.createElement('li');
   li.className = 'item' + (feita ? ' feita' : '');
+  const mostrarAcoes = comAcoes || comFalar;
   li.innerHTML = `
     ${semCheck ? '' : '<button class="marca-check" aria-label="Marcar concluída"><svg><use href="#i-check"/></svg><svg class="patinha"><use href="#i-pata"/></svg></button>'}
     <div class="item-corpo"><p class="item-nome"></p><div class="item-meta"></div></div>
-    ${comAcoes ? `<div class="item-acoes">
+    ${mostrarAcoes ? `<div class="item-acoes">
+      ${comFalar ? '<button type="button" class="item-acao item-falar" aria-label="Ouvir este item em voz alta" title="Ouvir"><svg><use href="#i-alto-falante"/></svg></button>' : ''}
       ${comChat ? '<button type="button" class="item-acao item-chat" aria-label="Conversar" title="Conversar"><svg><use href="#i-chat"/></svg></button>' : ''}
-      <button type="button" class="item-acao item-editar" aria-label="Editar" title="Editar"><svg><use href="#i-editar"/></svg></button>
-      <button type="button" class="item-acao item-excluir" aria-label="Excluir" title="Excluir"><svg><use href="#i-lixo"/></svg></button>
+      ${comAcoes ? '<button type="button" class="item-acao item-editar" aria-label="Editar" title="Editar"><svg><use href="#i-editar"/></svg></button>' : ''}
+      ${comAcoes ? '<button type="button" class="item-acao item-excluir" aria-label="Excluir" title="Excluir"><svg><use href="#i-lixo"/></svg></button>' : ''}
     </div>` : ''}
   `;
   li.querySelector('.item-nome').textContent = item.nome;
   const meta = li.querySelector('.item-meta');
   if (item.prioridade) { const s = document.createElement('span'); s.className = 'selo selo-alta'; s.textContent = 'prioridade'; meta.appendChild(s); }
   if (item.categoria) { const s = document.createElement('span'); s.className = 'item-hora'; s.textContent = `${CATEGORIA_ICONE[item.categoria] || ''} ${item.categoria}`; meta.appendChild(s); }
-  if (item.horario) { const s = document.createElement('span'); s.className = 'item-hora'; s.textContent = item.horario; meta.appendChild(s); }
+  if (item.diaInteiro) {
+    const s = document.createElement('span'); s.className = 'item-hora'; s.textContent = 'dia inteiro'; meta.appendChild(s);
+  } else if (item.horario) {
+    const s = document.createElement('span'); s.className = 'item-hora';
+    s.textContent = item.horarioFim ? `${item.horario}–${item.horarioFim}` : item.horario;
+    meta.appendChild(s);
+  }
   if (item.local) { const s = document.createElement('span'); s.className = 'item-hora'; s.textContent = item.local; meta.appendChild(s); }
   if (!semCheck) {
     li.querySelector('.marca-check').addEventListener('click', () => marcarConcluida(item.id, !feita, data));
   }
+  if (comFalar) li.querySelector('.item-falar').addEventListener('click', () => falarItem(item));
   if (comAcoes) {
     li.querySelector('.item-editar').addEventListener('click', () => abrirEdicaoItem(item));
     li.querySelector('.item-excluir').addEventListener('click', () => excluirItem(item.id));
@@ -318,6 +328,7 @@ function renderizarTudo() {
   renderizarProgressoConquistas();
   renderizarHabitos('listaHabitosProgresso', 'habitosProgressoVazio', false);
   renderizarProgressoDia();
+  sincronizarUiVoz();
   if ($('diaDialog').open && diaDialogAtual) abrirDiaDialog(diaDialogAtual);
 }
 
@@ -367,13 +378,34 @@ function renderizarPrioridades() {
   itens.forEach(item => ul.appendChild(criarLinhaItem(item, { data: hoje })));
   $('prioridadesVazio').hidden = itens.length > 0;
 }
+// Junta num único horário do dia: compromissos + qualquer outro item (tarefa,
+// fazer depois, hábito, autocuidado, lembrete, item de card personalizado)
+// que tenha horário marcado — sem duplicar dado, é o mesmo item de origem.
+function itensAgendaHoje() {
+  const hoje = hojeISO();
+  const linha = [];
+  ['compromisso', 'tarefa', 'depois', 'habito', 'autocuidado'].forEach(tipo => {
+    itensPorTipo(tipo, hoje).forEach(i => { if (i.horario || i.diaInteiro) linha.push(i); });
+  });
+  (dadosUsuario.lembretes || []).forEach(l => {
+    if (l.horario) linha.push({ id: l.id, nome: l.texto, horario: l.horario, tipo: 'lembrar' });
+  });
+  ((dadosUsuario.painel && dadosUsuario.painel.blocos) || []).forEach(b => {
+    if (b.tipo !== 'personalizado') return;
+    (b.itens || []).forEach(it => {
+      if (it.horario) linha.push({ id: it.id, nome: it.texto, horario: it.horario, tipo: 'personalizado' });
+    });
+  });
+  return linha.sort((a, b) => (a.diaInteiro ? '' : a.horario || '').localeCompare(b.diaInteiro ? '' : b.horario || ''));
+}
+
 function renderizarAgenda() {
-  const itens = itensPorTipo('compromisso');
+  const itens = itensAgendaHoje();
   const ol = $('linhaAgenda'); ol.innerHTML = '';
   itens.forEach(item => {
     const li = document.createElement('li');
     li.innerHTML = `<span class="lt-hora"></span><span class="lt-marcador"><span class="lt-ponto"></span><span class="lt-fio"></span></span><div class="lt-corpo"><p class="lt-titulo"></p><p class="lt-local"></p></div>`;
-    li.querySelector('.lt-hora').textContent = item.horario || '';
+    li.querySelector('.lt-hora').textContent = item.diaInteiro ? 'dia todo' : (item.horarioFim ? `${item.horario}–${item.horarioFim}` : (item.horario || ''));
     li.querySelector('.lt-titulo').textContent = item.nome;
     const localEl = li.querySelector('.lt-local');
     if (item.local) localEl.textContent = item.local; else localEl.remove();
@@ -393,9 +425,12 @@ function renderizarDepoisBloco() {
   const el = $('listaDepois'); el.innerHTML = '';
   itens.forEach(item => {
     const chip = document.createElement('div'); chip.className = 'chip';
-    chip.innerHTML = `<svg><use href="#i-bandeja"/></svg><span></span><button type="button" aria-label="Remover"><svg><use href="#i-x"/></svg></button>`;
+    chip.innerHTML = `<svg><use href="#i-bandeja"/></svg><span></span>${item.horario ? `<span class="item-hora"></span>` : ''}<button type="button" aria-label="Ouvir"><svg><use href="#i-alto-falante"/></svg></button><button type="button" aria-label="Remover"><svg><use href="#i-x"/></svg></button>`;
     chip.querySelector('span').textContent = item.nome;
-    chip.querySelector('button').addEventListener('click', () => excluirItem(item.id));
+    if (item.horario) chip.querySelector('.item-hora').textContent = item.horario;
+    const botoes = chip.querySelectorAll('button');
+    botoes[0].addEventListener('click', () => falarItem(item));
+    botoes[1].addEventListener('click', () => excluirItem(item.id));
     el.appendChild(chip);
   });
   $('depoisVazio').hidden = itens.length > 0;
@@ -428,10 +463,14 @@ function renderizarAutocuidado() {
     div.innerHTML = `
       <svg><use href="${ICONE_SVG[item.icone] || '#i-coracao'}"/></svg>
       <span class="toque-nome"></span>
+      ${item.horario ? '<span class="item-hora"></span>' : ''}
+      <button type="button" class="toque-falar" aria-label="Ouvir este item"><svg><use href="#i-alto-falante"/></svg></button>
       <button type="button" class="toque-marca" aria-label="Marcar concluído"><svg><use href="#i-check"/></svg></button>
       <button type="button" class="toque-lixo" aria-label="Excluir item de autocuidado"><svg><use href="#i-lixo"/></svg></button>
     `;
     div.querySelector('.toque-nome').textContent = item.nome;
+    if (item.horario) div.querySelector('.item-hora').textContent = item.horario;
+    div.querySelector('.toque-falar').addEventListener('click', () => falarItem(item));
     div.querySelector('.toque-marca').addEventListener('click', () => marcarConcluida(item.id, !feita, hoje));
     div.querySelector('.toque-lixo').addEventListener('click', () => excluirItem(item.id));
     el.appendChild(div);
@@ -445,8 +484,9 @@ function renderizarHabitos(alvoId, vazioId, interativo) {
   const habitos = itensPorTipo('habito');
   habitos.forEach(h => {
     const linha = document.createElement('div'); linha.className = 'habito';
-    linha.innerHTML = `<span class="habito-nome"></span><div class="habito-dias"></div>`;
+    linha.innerHTML = `<span class="habito-nome"></span>${h.horario ? '<span class="item-hora"></span>' : ''}<div class="habito-dias"></div>`;
     linha.querySelector('.habito-nome').textContent = h.nome;
+    if (h.horario) linha.querySelector('.item-hora').textContent = h.horario;
     const diasEl = linha.querySelector('.habito-dias');
     const hoje = new Date();
     for (let i = 6; i >= 0; i--) {
@@ -463,6 +503,11 @@ function renderizarHabitos(alvoId, vazioId, interativo) {
       diasEl.appendChild(dot);
     }
     if (interativo) {
+      const falar = document.createElement('button'); falar.type = 'button'; falar.className = 'habito-lixo';
+      falar.setAttribute('aria-label', 'Ouvir este hábito');
+      falar.innerHTML = '<svg><use href="#i-alto-falante"/></svg>';
+      falar.addEventListener('click', () => falarItem(h));
+      linha.appendChild(falar);
       const lixo = document.createElement('button'); lixo.type = 'button'; lixo.className = 'habito-lixo';
       lixo.setAttribute('aria-label', 'Excluir hábito');
       lixo.innerHTML = '<svg><use href="#i-lixo"/></svg>';
@@ -538,9 +583,12 @@ function renderizarLembretes() {
   const lembretes = dadosUsuario.lembretes || [];
   lembretes.forEach(l => {
     const chip = document.createElement('div'); chip.className = 'chip';
-    chip.innerHTML = `<svg><use href="#i-pin"/></svg><span></span><button type="button" aria-label="Remover lembrete"><svg><use href="#i-x"/></svg></button>`;
+    chip.innerHTML = `<svg><use href="#i-pin"/></svg><span></span>${l.horario ? '<span class="item-hora"></span>' : ''}<button type="button" aria-label="Ouvir"><svg><use href="#i-alto-falante"/></svg></button><button type="button" aria-label="Remover lembrete"><svg><use href="#i-x"/></svg></button>`;
     chip.querySelector('span').textContent = l.texto;
-    chip.querySelector('button').addEventListener('click', () => excluirLembrete(l.id));
+    if (l.horario) chip.querySelector('.item-hora').textContent = l.horario;
+    const botoes = chip.querySelectorAll('button');
+    botoes[0].addEventListener('click', () => falarItem({ nome: l.texto }));
+    botoes[1].addEventListener('click', () => excluirLembrete(l.id));
     el.appendChild(chip);
   });
 }
@@ -548,9 +596,11 @@ $('formLembrete').addEventListener('submit', async e => {
   e.preventDefault();
   const texto = $('campoLembrete').value.trim();
   if (!texto) return;
-  const lembretes = [...(dadosUsuario.lembretes || []), { id: crypto.randomUUID(), texto, criadoEm: new Date().toISOString() }];
+  const horario = $('campoLembreteHorario').value || null;
+  const lembretes = [...(dadosUsuario.lembretes || []), { id: crypto.randomUUID(), texto, horario, criadoEm: new Date().toISOString() }];
   await updateDoc(doc(db, 'usuarios', uid), { lembretes });
   $('campoLembrete').value = '';
+  $('campoLembreteHorario').value = '';
 });
 async function excluirLembrete(id) {
   const lembretes = (dadosUsuario.lembretes || []).filter(l => l.id !== id);
@@ -765,23 +815,41 @@ $('fecharDiaDialog').addEventListener('click', () => { $('diaDialog').close(); d
 function atualizarCamposTipo() {
   const tipo = $('campoTipo').value;
   $('grupoCategoria').hidden = !(tipo === 'tarefa' || tipo === 'depois');
-  $('grupoHorario').hidden = !(tipo === 'tarefa' || tipo === 'compromisso');
   $('grupoLocal').hidden = tipo !== 'compromisso';
   $('grupoDias').hidden = !(tipo === 'tarefa' || tipo === 'compromisso');
   $('grupoIcone').hidden = tipo !== 'autocuidado';
   $('grupoPrioridade').hidden = tipo !== 'tarefa';
-  $('campoHorario').required = (tipo === 'tarefa' || tipo === 'compromisso');
 }
 $('campoTipo').addEventListener('change', atualizarCamposTipo);
+
+function atualizarCamposDiaInteiro() {
+  const inteiro = $('campoDiaInteiro').checked;
+  $('grupoHorario').hidden = inteiro;
+  $('grupoHorarioFim').hidden = inteiro;
+}
+$('campoDiaInteiro').addEventListener('change', atualizarCamposDiaInteiro);
+
+function atualizarCamposLembrete() {
+  const ativo = $('campoLembreteAtivo').checked;
+  $('grupoLembreteMinutos').hidden = !ativo;
+  document.querySelector('#maisOpcoes .linha-checkbox:has(#campoLembreteFalar)').hidden = !ativo;
+  $('grupoLembreteCustom').hidden = !ativo || $('campoLembreteMinutos').value !== 'custom';
+}
+$('campoLembreteAtivo').addEventListener('change', atualizarCamposLembrete);
+$('campoLembreteMinutos').addEventListener('change', atualizarCamposLembrete);
 
 function abrirNovoItem(tipo) {
   itemEmEdicao = null;
   $('itemForm').reset();
   $('campoTipo').value = tipo;
   atualizarCamposTipo();
+  atualizarCamposDiaInteiro();
+  atualizarCamposLembrete();
+  $('maisOpcoes').open = false;
   $('itemDialogTitulo').textContent = 'Novo item';
   $('excluirItem').hidden = true;
   $('prioridadeAviso').hidden = true;
+  $('microfoneStatus').hidden = true;
   $('itemDialog').showModal();
 }
 function abrirEdicaoItem(item) {
@@ -791,14 +859,27 @@ function abrirEdicaoItem(item) {
   $('campoNome').value = item.nome || '';
   $('campoCategoria').value = item.categoria || 'higiene';
   $('campoHorario').value = item.horario || '';
+  $('campoHorarioFim').value = item.horarioFim || '';
+  $('campoDiaInteiro').checked = !!item.diaInteiro;
+  atualizarCamposDiaInteiro();
   $('campoLocal').value = item.local || '';
   const diasAtivos = new Set(item.dias && item.dias.length ? item.dias : [0,1,2,3,4,5,6]);
   document.querySelectorAll('#diasGrade input').forEach(i => { i.checked = diasAtivos.has(Number(i.value)); });
   document.querySelectorAll('#iconeEscolha input').forEach(i => { i.checked = i.value === (item.icone || 'comprimido'); });
   $('campoPrioridade').checked = !!item.prioridade;
+  const lembrete = item.lembrete || {};
+  $('campoLembreteAtivo').checked = !!lembrete.ativo;
+  const minutosConhecidos = ['0', '5', '10', '15', '30'];
+  const minutosStr = String(lembrete.minutosAntes ?? 10);
+  $('campoLembreteMinutos').value = minutosConhecidos.includes(minutosStr) ? minutosStr : 'custom';
+  $('campoLembreteCustom').value = minutosConhecidos.includes(minutosStr) ? 45 : minutosStr;
+  $('campoLembreteFalar').checked = !!lembrete.falar;
+  atualizarCamposLembrete();
+  $('maisOpcoes').open = !!(lembrete.ativo || (item.dias && item.dias.length && item.dias.length < 7));
   $('itemDialogTitulo').textContent = 'Editar item';
   $('excluirItem').hidden = false;
   $('prioridadeAviso').hidden = true;
+  $('microfoneStatus').hidden = true;
   $('itemDialog').showModal();
 }
 
@@ -832,9 +913,22 @@ $('itemForm').addEventListener('submit', async e => {
   $('prioridadeAviso').hidden = true;
   const dias = [...document.querySelectorAll('#diasGrade input:checked')].map(i => Number(i.value));
   const icone = document.querySelector('#iconeEscolha input:checked')?.value || 'comprimido';
-  const campos = { tipo, nome: $('campoNome').value.trim() };
+  const diaInteiro = $('campoDiaInteiro').checked;
+  const lembreteAtivo = $('campoLembreteAtivo').checked;
+  const minutosSelecionado = $('campoLembreteMinutos').value;
+  const minutosAntes = minutosSelecionado === 'custom'
+    ? Math.max(1, Number($('campoLembreteCustom').value) || 45)
+    : Number(minutosSelecionado);
+
+  const campos = {
+    tipo, nome: $('campoNome').value.trim(),
+    horario: diaInteiro ? '' : $('campoHorario').value,
+    horarioFim: diaInteiro ? '' : $('campoHorarioFim').value,
+    diaInteiro,
+    lembrete: { ativo: lembreteAtivo, minutosAntes, falar: lembreteAtivo && $('campoLembreteFalar').checked }
+  };
   if (tipo === 'tarefa' || tipo === 'depois') campos.categoria = $('campoCategoria').value;
-  if (tipo === 'tarefa' || tipo === 'compromisso') { campos.horario = $('campoHorario').value; campos.dias = dias; }
+  if (tipo === 'tarefa' || tipo === 'compromisso') campos.dias = dias;
   if (tipo === 'compromisso') campos.local = $('campoLocal').value.trim();
   if (tipo === 'autocuidado') campos.icone = icone;
   if (tipo === 'tarefa') campos.prioridade = prioridade;
@@ -850,6 +944,109 @@ $('itemForm').addEventListener('submit', async e => {
   }
   await updateDoc(doc(db, 'usuarios', uid), { itens });
   itemEmEdicao = null;
+});
+
+// ---------- Cadastro por voz (🎤 "Falar para cadastrar") ----------
+const DIAS_NOME_PARA_NUM = {
+  domingo: 0, segunda: 1, 'segunda-feira': 1, terca: 2, 'terça': 2, 'terça-feira': 2, 'terca-feira': 2,
+  quarta: 3, 'quarta-feira': 3, quinta: 4, 'quinta-feira': 4, sexta: 5, 'sexta-feira': 5, sabado: 6, 'sábado': 6
+};
+const NUMEROS_POR_EXTENSO = { uma: 1, duas: 2, tres: 3, 'três': 3, quatro: 4, cinco: 5, seis: 6, sete: 7, oito: 8, nove: 9, dez: 10, onze: 11, doze: 12 };
+
+function preencherFormularioPorVoz(textoOriginal) {
+  const minusculo = textoOriginal.toLowerCase();
+  $('microfoneStatus').hidden = false;
+  $('microfoneStatus').textContent = `Ouvi: "${textoOriginal}". Confira os campos antes de salvar.`;
+
+  let tipoDetectado = 'tarefa';
+  if (/medica[çc][ãa]o|rem[ée]dio/.test(minusculo)) tipoDetectado = 'autocuidado';
+  else if (/consulta|terapia|reuni[ãa]o|dentista|m[ée]dico/.test(minusculo)) tipoDetectado = 'compromisso';
+  else if (/h[áa]bito/.test(minusculo)) tipoDetectado = 'habito';
+  else if (/\bdepois\b|algum dia|quando der/.test(minusculo)) tipoDetectado = 'depois';
+
+  let dias = []; // [] = todo dia — também serve pra "limpar" dia da fala anterior, se houver
+  if (/todos os dias|toda dia|diariamente/.test(minusculo)) dias = [0, 1, 2, 3, 4, 5, 6];
+  else {
+    for (const [nomeDia, numDia] of Object.entries(DIAS_NOME_PARA_NUM)) {
+      if (minusculo.includes(nomeDia)) { dias = [numDia]; break; }
+    }
+  }
+
+  let horario = null;
+  if (/meio[- ]dia/.test(minusculo)) horario = '12:00';
+  else if (/meia[- ]noite/.test(minusculo)) horario = '00:00';
+  else {
+    const numerico = minusculo.match(/\b(\d{1,2})(?:[:h](\d{2}))?\s*(da manh[ãa]|da tarde|da noite)?\s*(horas?)?\b/);
+    const porExtenso = minusculo.match(/\b(uma|duas|tr[eê]s|quatro|cinco|seis|sete|oito|nove|dez|onze|doze)\s*(?:horas?)?\s*(da manh[ãa]|da tarde|da noite)?/);
+    if (numerico && (minusculo.includes('às') || minusculo.includes('as ') || numerico[4])) {
+      let h = Number(numerico[1]);
+      const min = numerico[2] ? Number(numerico[2]) : 0;
+      const periodo = numerico[3] || '';
+      if (periodo.includes('tarde') && h < 12) h += 12;
+      if (periodo.includes('noite') && h < 12) h += 12;
+      if (h <= 23 && min <= 59) horario = `${String(h).padStart(2, '0')}:${String(min).padStart(2, '0')}`;
+    } else if (porExtenso && NUMEROS_POR_EXTENSO[porExtenso[1]]) {
+      let h = NUMEROS_POR_EXTENSO[porExtenso[1]];
+      const periodo = porExtenso[2] || '';
+      if ((periodo.includes('tarde') || periodo.includes('noite')) && h < 12) h += 12;
+      horario = `${String(h).padStart(2, '0')}:00`;
+    }
+  }
+
+  let titulo = textoOriginal
+    .replace(/\btodos os dias\b|\btoda dia\b|\bdiariamente\b/gi, '')
+    .replace(/\b(domingo|segunda(-feira)?|ter[çc]a(-feira)?|quarta(-feira)?|quinta(-feira)?|sexta(-feira)?|s[áa]bado)\b/gi, '')
+    // sem \b antes de "à": \w do JS é só ASCII, então \b nunca "vê" fronteira
+    // antes de acento e o strip abaixo nunca batia (bug encontrado na verificação)
+    .replace(/às?\s*\d{1,2}([:h]\d{2})?\s*(da manh[ãa]|da tarde|da noite)?(\s*horas?)?/gi, '')
+    .replace(/às?\s*(uma|duas|tr[eê]s|quatro|cinco|seis|sete|oito|nove|dez|onze|doze)\s*(horas?)?\s*(da manh[ãa]|da tarde|da noite)?/gi, '')
+    .replace(/\b(a|ao|à)?\s*meio[- ]dia\b|\b(a|à)?\s*meia[- ]noite\b/gi, '')
+    .replace(/\s{2,}/g, ' ')
+    .trim()
+    .replace(/[,.]$/, '');
+  if (!titulo) titulo = textoOriginal;
+  titulo = titulo.charAt(0).toUpperCase() + titulo.slice(1);
+
+  $('campoTipo').value = tipoDetectado;
+  atualizarCamposTipo();
+  $('campoNome').value = titulo;
+  if (horario) {
+    $('campoDiaInteiro').checked = false;
+    atualizarCamposDiaInteiro();
+    $('campoHorario').value = horario;
+  }
+  if (tipoDetectado === 'tarefa' || tipoDetectado === 'compromisso') {
+    document.querySelectorAll('#diasGrade input').forEach(i => { i.checked = dias.includes(Number(i.value)); });
+  }
+  if (dias || horario) $('maisOpcoes').open = true;
+}
+
+$('microfoneCadastroBtn').addEventListener('click', () => {
+  const ReconhecimentoDeFala = window.SpeechRecognition || window.webkitSpeechRecognition;
+  if (!ReconhecimentoDeFala) {
+    $('microfoneStatus').hidden = false;
+    $('microfoneStatus').textContent = 'Reconhecimento de voz não é compatível com este navegador. Preencha manualmente.';
+    return;
+  }
+  const btn = $('microfoneCadastroBtn');
+  const reconhecimento = new ReconhecimentoDeFala();
+  reconhecimento.lang = 'pt-BR';
+  reconhecimento.interimResults = false;
+  reconhecimento.maxAlternatives = 1;
+  btn.classList.add('gravando');
+  $('microfoneStatus').hidden = false;
+  $('microfoneStatus').textContent = 'Ouvindo… fale o que quer cadastrar (ex: "terapia terça-feira às três da tarde").';
+  reconhecimento.addEventListener('result', e => {
+    preencherFormularioPorVoz(e.results[0][0].transcript);
+  });
+  reconhecimento.addEventListener('error', () => {
+    $('microfoneStatus').textContent = 'Não consegui te ouvir direito. Tenta de novo ou preenche manualmente.';
+  });
+  reconhecimento.addEventListener('end', () => { btn.classList.remove('gravando'); });
+  try { reconhecimento.start(); } catch (erro) {
+    btn.classList.remove('gravando');
+    $('microfoneStatus').textContent = 'Não consegui acessar o microfone.';
+  }
 });
 
 // ---------- Progresso (dia / semana / mês) ----------
@@ -965,18 +1162,20 @@ function criarBlocoPersonalizado(entry) {
     </div>
     <ul class="lista-itens" data-lista-personalizada></ul>
     <p class="bloco-sub" data-vazio-personalizada hidden>Nada por aqui ainda.</p>
-    <form class="bloco-personalizado-form">
+    <form class="bloco-personalizado-form mini-form">
       <input type="text" maxlength="60" placeholder="Adicionar item…">
+      <input type="time" class="mini-form-hora" aria-label="Horário (opcional)">
       <button type="submit" class="botao-icone-destaque" aria-label="Adicionar item"><svg><use href="#i-mais"/></svg></button>
     </form>
   `;
   el.querySelector('.bloco-personalizado-form').addEventListener('submit', e => {
     e.preventDefault();
-    const input = e.target.querySelector('input');
+    const input = e.target.querySelector('input[type="text"]');
+    const horarioInput = e.target.querySelector('input[type="time"]');
     const texto = input.value.trim();
     if (!texto) return;
-    adicionarItemPersonalizado(entry.id, texto);
-    input.value = '';
+    adicionarItemPersonalizado(entry.id, texto, horarioInput.value || null);
+    input.value = ''; horarioInput.value = '';
   });
   return el;
 }
@@ -992,19 +1191,24 @@ function renderizarItensPersonalizado(entry, el) {
     li.className = 'item' + (item.feita ? ' feita' : '');
     li.innerHTML = `
       <button class="marca-check" aria-label="Marcar concluído"><svg><use href="#i-check"/></svg><svg class="patinha"><use href="#i-pata"/></svg></button>
-      <div class="item-corpo"><p class="item-nome"></p></div>
-      <div class="item-acoes"><button type="button" class="item-acao" aria-label="Excluir item"><svg><use href="#i-lixo"/></svg></button></div>
+      <div class="item-corpo"><p class="item-nome"></p><div class="item-meta">${item.horario ? '<span class="item-hora"></span>' : ''}</div></div>
+      <div class="item-acoes">
+        <button type="button" class="item-acao item-falar" aria-label="Ouvir este item"><svg><use href="#i-alto-falante"/></svg></button>
+        <button type="button" class="item-acao" aria-label="Excluir item"><svg><use href="#i-lixo"/></svg></button>
+      </div>
     `;
     li.querySelector('.item-nome').textContent = item.texto;
+    if (item.horario) li.querySelector('.item-hora').textContent = item.horario;
     li.querySelector('.marca-check').addEventListener('click', () => alternarItemPersonalizado(entry.id, item.id));
-    li.querySelector('.item-acao').addEventListener('click', () => excluirItemPersonalizado(entry.id, item.id));
+    li.querySelector('.item-falar').addEventListener('click', () => falarItem({ nome: item.texto, horario: item.horario }));
+    li.querySelector('.item-acoes .item-acao:last-child').addEventListener('click', () => excluirItemPersonalizado(entry.id, item.id));
     ul.appendChild(li);
   });
   if (vazio) vazio.hidden = itensBloco.length > 0;
 }
-async function adicionarItemPersonalizado(id, texto) {
+async function adicionarItemPersonalizado(id, texto, horario = null) {
   const bloco = encontrarBloco(id); if (!bloco) return;
-  const itens = [...(bloco.itens || []), { id: crypto.randomUUID(), texto, feita: false }];
+  const itens = [...(bloco.itens || []), { id: crypto.randomUUID(), texto, feita: false, horario }];
   await atualizarBloco(id, { itens });
 }
 async function alternarItemPersonalizado(id, itemId) {
@@ -1169,6 +1373,46 @@ $('cancelarPersonalizarBtn').addEventListener('click', async () => {
 });
 $('concluirPersonalizarBtn').addEventListener('click', sairDoModoPersonalizar);
 
+// ---------- Config da Rotina Falante ----------
+function salvarPrefsVoz(mudancas) {
+  const novo = { ...prefsVoz(), ...mudancas };
+  return updateDoc(doc(db, 'usuarios', uid), { voz: novo });
+}
+function sincronizarUiVoz() {
+  const prefs = prefsVoz();
+  $('interruptorVoz').setAttribute('aria-pressed', String(prefs.ativo));
+  $('interruptorFalarAutomatico').setAttribute('aria-pressed', String(prefs.falarAutomatico));
+  $('interruptorFalarProximo').setAttribute('aria-pressed', String(prefs.falarProximoItem));
+  $('interruptorNaoPerturbe').setAttribute('aria-pressed', String(prefs.naoPerturbe.ativo));
+  $('naoPerturbeHorarios').hidden = !prefs.naoPerturbe.ativo;
+  if (document.activeElement !== $('campoVozVolume')) $('campoVozVolume').value = prefs.volume;
+  if (document.activeElement !== $('campoVozVelocidade')) $('campoVozVelocidade').value = prefs.velocidade;
+  if (document.activeElement !== $('campoVozMinutosPadrao')) $('campoVozMinutosPadrao').value = String(prefs.minutosAntesPadrao);
+  if (document.activeElement !== $('campoNaoPerturbeInicio')) $('campoNaoPerturbeInicio').value = prefs.naoPerturbe.inicio;
+  if (document.activeElement !== $('campoNaoPerturbeFim')) $('campoNaoPerturbeFim').value = prefs.naoPerturbe.fim;
+}
+$('interruptorVoz').addEventListener('click', () => salvarPrefsVoz({ ativo: $('interruptorVoz').getAttribute('aria-pressed') !== 'true' }));
+$('interruptorFalarAutomatico').addEventListener('click', () => salvarPrefsVoz({ falarAutomatico: $('interruptorFalarAutomatico').getAttribute('aria-pressed') !== 'true' }));
+$('interruptorFalarProximo').addEventListener('click', () => salvarPrefsVoz({ falarProximoItem: $('interruptorFalarProximo').getAttribute('aria-pressed') !== 'true' }));
+$('interruptorNaoPerturbe').addEventListener('click', () => {
+  const atual = prefsVoz();
+  salvarPrefsVoz({ naoPerturbe: { ...atual.naoPerturbe, ativo: !atual.naoPerturbe.ativo } });
+});
+let vozSliderDebounce;
+function agendarSalvarSlider(campo, valor) {
+  clearTimeout(vozSliderDebounce);
+  vozSliderDebounce = setTimeout(() => salvarPrefsVoz({ [campo]: valor }), 400);
+}
+$('campoVozVolume').addEventListener('input', () => agendarSalvarSlider('volume', Number($('campoVozVolume').value)));
+$('campoVozVelocidade').addEventListener('input', () => agendarSalvarSlider('velocidade', Number($('campoVozVelocidade').value)));
+$('campoVozMinutosPadrao').addEventListener('change', () => salvarPrefsVoz({ minutosAntesPadrao: Number($('campoVozMinutosPadrao').value) }));
+$('campoNaoPerturbeInicio').addEventListener('change', () => {
+  salvarPrefsVoz({ naoPerturbe: { ...prefsVoz().naoPerturbe, inicio: $('campoNaoPerturbeInicio').value } });
+});
+$('campoNaoPerturbeFim').addEventListener('change', () => {
+  salvarPrefsVoz({ naoPerturbe: { ...prefsVoz().naoPerturbe, fim: $('campoNaoPerturbeFim').value } });
+});
+
 // ---------- Reordenar blocos (arrastar + teclado, só no modo personalizar) ----------
 (function ligarReordenacao() {
   const painel = $('painel');
@@ -1215,6 +1459,211 @@ $('concluirPersonalizarBtn').addEventListener('click', sairDoModoPersonalizar);
     updateDoc(doc(db, 'usuarios', uid), { painel: { blocos } });
   }
 })();
+
+// ---------- Rotina Falante (voz) ----------
+let vozAtualUtterance = null;
+let ultimaFalaTexto = '';
+let vozesDisponiveis = [];
+let ultimoMinutoChecado = null;
+const lembretesJaFalados = new Set();
+
+function carregarVozes() { vozesDisponiveis = window.speechSynthesis.getVoices(); }
+if ('speechSynthesis' in window) {
+  carregarVozes();
+  window.speechSynthesis.onvoiceschanged = carregarVozes;
+}
+function prefsVoz() {
+  const salvas = (dadosUsuario && dadosUsuario.voz) || {};
+  return {
+    ativo: false, volume: 1, velocidade: 1, vozNome: null, falarAutomatico: true,
+    minutosAntesPadrao: 10, falarProximoItem: false,
+    naoPerturbe: { ativo: false, inicio: '22:00', fim: '07:00' },
+    ...salvas,
+    naoPerturbe: { ativo: false, inicio: '22:00', fim: '07:00', ...(salvas.naoPerturbe || {}) }
+  };
+}
+function escolherVoz(nomePreferido) {
+  if (!vozesDisponiveis.length) return null;
+  if (nomePreferido) {
+    const escolhida = vozesDisponiveis.find(v => v.name === nomePreferido);
+    if (escolhida) return escolhida;
+  }
+  const porIdioma = vozesDisponiveis.filter(v => (v.lang || '').toLowerCase().startsWith('pt-br'));
+  const candidatas = porIdioma.length ? porIdioma : vozesDisponiveis.filter(v => (v.lang || '').toLowerCase().startsWith('pt'));
+  const pistasFemininas = ['female', 'fem', 'maria', 'luciana', 'francisca', 'vitória', 'vitoria', 'camila'];
+  const feminina = candidatas.find(v => pistasFemininas.some(p => v.name.toLowerCase().includes(p)));
+  return feminina || candidatas[0] || vozesDisponiveis[0] || null;
+}
+function horarioFalado(hhmm) {
+  if (!hhmm) return '';
+  const [h, m] = hhmm.split(':').map(Number);
+  const hora12 = h % 12 === 0 ? 12 : h % 12;
+  const periodo = h < 12 ? 'da manhã' : h < 18 ? 'da tarde' : 'da noite';
+  if (h === 12 && m === 0) return 'meio-dia';
+  if (h === 0 && m === 0) return 'meia-noite';
+  return m === 0 ? `${hora12} horas ${periodo}` : `${hora12} horas e ${m} ${periodo}`;
+}
+function atualizarBarraVoz(falando) {
+  const btn = $('pararFalarBtn');
+  if (btn) btn.hidden = !falando;
+}
+function falarTexto(texto) {
+  if (!texto || !('speechSynthesis' in window)) return;
+  const prefs = prefsVoz();
+  window.speechSynthesis.cancel();
+  const utter = new SpeechSynthesisUtterance(texto);
+  utter.lang = 'pt-BR';
+  utter.volume = prefs.volume;
+  utter.rate = prefs.velocidade;
+  const voz = escolherVoz(prefs.vozNome);
+  if (voz) utter.voice = voz;
+  utter.onend = () => atualizarBarraVoz(false);
+  utter.onerror = () => atualizarBarraVoz(false);
+  ultimaFalaTexto = texto;
+  vozAtualUtterance = utter;
+  atualizarBarraVoz(true);
+  window.speechSynthesis.speak(utter);
+}
+function pararDeFalar() {
+  if ('speechSynthesis' in window) window.speechSynthesis.cancel();
+  atualizarBarraVoz(false);
+}
+function repetirFala() { if (ultimaFalaTexto) falarTexto(ultimaFalaTexto); }
+
+function falarItem(item) {
+  let frase = item.nome || '';
+  if (item.diaInteiro) frase += ', dia inteiro';
+  else if (item.horario) frase += `, às ${horarioFalado(item.horario)}`;
+  falarTexto(frase);
+}
+
+function lerMeuDia() {
+  const hoje = new Date();
+  const h = hoje.getHours();
+  const nome = (dadosUsuario.perfil?.nome || '').split(' ')[0] || '';
+  const saudacao = h < 12 ? 'Bom dia' : h < 18 ? 'Boa tarde' : 'Boa noite';
+  const partes = [`${saudacao}${nome ? ', ' + nome : ''}.`];
+  const prioridades = itensPorTipo('tarefa').filter(t => t.prioridade);
+  if (prioridades.length) partes.push(`Hoje você tem ${prioridades.length} prioridade${prioridades.length > 1 ? 's' : ''}.`);
+  const agenda = itensAgendaHoje().filter(i => i.horario);
+  agenda.slice(0, 4).forEach(i => partes.push(`Às ${horarioFalado(i.horario)}, ${i.nome}.`));
+  const foco = (dadosUsuario.foco || {})[hojeISO()];
+  if (foco && foco.texto) partes.push(`Seu foco de hoje é ${foco.texto}.`);
+  if (partes.length === 1) partes.push('Você ainda não tem nada marcado pra hoje.');
+  falarTexto(partes.join(' '));
+}
+
+function oQueFacoAgora() {
+  const hoje = hojeISO();
+  const agoraMin = new Date().getHours() * 60 + new Date().getMinutes();
+  const paraMin = hhmm => { const [hh, mm] = (hhmm || '0:0').split(':').map(Number); return hh * 60 + mm; };
+  const agendaveis = itensAgendaHoje().filter(i => i.horario && i.tipo !== 'lembrar' && i.tipo !== 'personalizado');
+
+  const atrasado = agendaveis.find(i => paraMin(i.horario) < agoraMin && !estaConcluida(i.id, hoje));
+  if (atrasado) { falarTexto(`Você está atrasada pra "${atrasado.nome}", marcado pras ${horarioFalado(atrasado.horario)}.`); return; }
+
+  const agora = agendaveis.find(i => Math.abs(paraMin(i.horario) - agoraMin) <= 15 && !estaConcluida(i.id, hoje));
+  if (agora) { falarTexto(`Agora é hora de "${agora.nome}".`); return; }
+
+  const prioridade = itensPorTipo('tarefa', hoje).find(t => t.prioridade && !estaConcluida(t.id, hoje));
+  if (prioridade) { falarTexto(`Sua prioridade agora é "${prioridade.nome}".`); return; }
+
+  const autocuidado = itensPorTipo('autocuidado', hoje).find(a => !estaConcluida(a.id, hoje));
+  if (autocuidado) { falarTexto(`Não esqueça: "${autocuidado.nome}".`); return; }
+
+  const proximo = itensPorTipo('compromisso', hoje)
+    .filter(c => c.horario && paraMin(c.horario) >= agoraMin)
+    .sort((a, b) => paraMin(a.horario) - paraMin(b.horario))[0];
+  if (proximo) { falarTexto(`Seu próximo compromisso é "${proximo.nome}", às ${horarioFalado(proximo.horario)}.`); return; }
+
+  falarTexto('Por enquanto está tudo em dia. Você pode escolher qualquer tarefa da sua lista, sem pressa.');
+}
+
+function falarProximoAposConcluir(idConcluido) {
+  const hoje = hojeISO();
+  const agoraMin = new Date().getHours() * 60 + new Date().getMinutes();
+  const paraMin = hhmm => { const [hh, mm] = (hhmm || '0:0').split(':').map(Number); return hh * 60 + mm; };
+  const pendentes = itensAgendaHoje().filter(i =>
+    i.id !== idConcluido && i.horario && i.tipo !== 'lembrar' && i.tipo !== 'personalizado' && !estaConcluida(i.id, hoje));
+  const proximo = pendentes.filter(i => paraMin(i.horario) >= agoraMin).sort((a, b) => paraMin(a.horario) - paraMin(b.horario))[0] || pendentes[0];
+  falarTexto(proximo
+    ? `Você concluiu essa tarefa. Muito bem. Agora o próximo passo é ${proximo.nome}.`
+    : 'Você concluiu essa tarefa. Muito bem.');
+}
+
+function subtrairMinutos(hhmm, minutos) {
+  const [h, m] = hhmm.split(':').map(Number);
+  let total = (((h * 60 + m - minutos) % 1440) + 1440) % 1440;
+  return `${String(Math.floor(total / 60)).padStart(2, '0')}:${String(total % 60).padStart(2, '0')}`;
+}
+function calcularGatilhoLembrete(item) {
+  if (!item.horario) return null;
+  if (item.lembrete) {
+    if (!item.lembrete.ativo || !item.lembrete.falar) return null;
+    return subtrairMinutos(item.horario, item.lembrete.minutosAntes || 0);
+  }
+  return item.horario; // lembrar / personalizado: avisa no horário exato
+}
+function fraseDeLembrete(item) {
+  if (item.lembrete && item.lembrete.minutosAntes > 0) return `Daqui a pouco: ${item.nome}, às ${horarioFalado(item.horario)}.`;
+  return `Agora é hora de ${item.nome}.`;
+}
+function dentroDeNaoPerturbe(prefs) {
+  if (!prefs.naoPerturbe.ativo) return false;
+  const agora = new Date();
+  const agoraMin = agora.getHours() * 60 + agora.getMinutes();
+  const [hi, mi] = prefs.naoPerturbe.inicio.split(':').map(Number);
+  const [hf, mf] = prefs.naoPerturbe.fim.split(':').map(Number);
+  const inicioMin = hi * 60 + mi, fimMin = hf * 60 + mf;
+  if (inicioMin === fimMin) return false;
+  return inicioMin < fimMin ? (agoraMin >= inicioMin && agoraMin < fimMin) : (agoraMin >= inicioMin || agoraMin < fimMin);
+}
+function checarLembretesFalados() {
+  if (!dadosUsuario) return;
+  const prefs = prefsVoz();
+  if (!prefs.ativo || !prefs.falarAutomatico || dentroDeNaoPerturbe(prefs)) return;
+  const agora = new Date();
+  const minutoChave = `${hojeISO()}T${String(agora.getHours()).padStart(2, '0')}:${String(agora.getMinutes()).padStart(2, '0')}`;
+  if (minutoChave === ultimoMinutoChecado) return;
+  ultimoMinutoChecado = minutoChave;
+  const horaAtual = minutoChave.slice(-5);
+  itensAgendaHoje().forEach(item => {
+    if (calcularGatilhoLembrete(item) !== horaAtual) return;
+    const chave = minutoChave + ':' + item.id;
+    if (lembretesJaFalados.has(chave)) return;
+    lembretesJaFalados.add(chave);
+    falarTexto(fraseDeLembrete(item));
+    mostrarAviso(fraseDeLembrete(item));
+  });
+}
+setInterval(checarLembretesFalados, 20000);
+
+$('lerMeuDiaBtn').addEventListener('click', lerMeuDia);
+$('oQueFacoBtn').addEventListener('click', oQueFacoAgora);
+$('repetirFalaBtn').addEventListener('click', repetirFala);
+$('pararFalarBtn').addEventListener('click', pararDeFalar);
+
+// Se o app abriu (ou já estava aberto) a partir de um clique em notificação,
+// lê o lembrete em voz alta — chega pela URL (app fechado, abre janela nova)
+// ou por postMessage do service worker (app já aberto em outra aba).
+function falarTextoSeAtivo(texto) {
+  const tentar = (restantes) => {
+    if (!dadosUsuario) { if (restantes > 0) setTimeout(() => tentar(restantes - 1), 500); return; }
+    if (prefsVoz().ativo) falarTexto(texto);
+  };
+  tentar(10);
+}
+(function falarSeVeioDeNotificacao() {
+  const texto = new URLSearchParams(location.search).get('falar');
+  if (!texto) return;
+  history.replaceState({}, '', location.pathname);
+  falarTextoSeAtivo(decodeURIComponent(texto));
+})();
+if (navigator.serviceWorker) {
+  navigator.serviceWorker.addEventListener('message', event => {
+    if (event.data?.tipo === 'falar-lembrete' && event.data.texto) falarTextoSeAtivo(event.data.texto);
+  });
+}
 
 // ---------- Notificações (FCM) ----------
 $('notifBtn').addEventListener('click', async () => { await ativarNotificacoes(); });
