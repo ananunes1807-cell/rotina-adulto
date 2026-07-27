@@ -275,9 +275,11 @@ button{ font-family:inherit; cursor:pointer; }
 .bloco.arrastando{ opacity:.45; }
 .bloco--foco{ background:linear-gradient(165deg, var(--pessego-fundo), var(--rosa-fundo)); }
 .bloco--foco .bloco-titulo{ color:var(--pessego-tinta); }
+.bloco--larga{ break-inside:avoid; column-span:all; }
 
-.bloco-cab{ display:flex; align-items:center; justify-content:space-between; gap:8px; margin-bottom:12px; }
+.bloco-cab{ display:flex; align-items:center; justify-content:space-between; gap:8px; margin-bottom:12px; flex-wrap:wrap; }
 .bloco-titulo-grupo{ display:flex; align-items:center; gap:9px; min-width:0; }
+.bloco-controles{ display:flex; align-items:center; gap:2px; flex:0 0 auto; }
 .bloco-icone{
   width:1.9rem; height:1.9rem; border-radius:50%; flex:0 0 auto; background:rgba(255,255,255,.55);
   display:flex; align-items:center; justify-content:center; color:var(--cor-tinta, var(--lilas-tinta));
@@ -293,6 +295,63 @@ button{ font-family:inherit; cursor:pointer; }
 }
 .arrastar-alca:hover{ opacity:1; background:rgba(255,255,255,.5); }
 .arrastar-alca svg{ width:1em; height:1em; }
+
+.bloco-opcoes-btn{
+  background:none; border:none; color:var(--tinta-suave); opacity:.55; width:1.7rem; height:1.7rem; min-width:28px; min-height:28px;
+  border-radius:8px; display:flex; align-items:center; justify-content:center; flex:0 0 auto;
+}
+.bloco-opcoes-btn:hover{ opacity:1; background:rgba(255,255,255,.5); }
+.bloco-opcoes-btn svg{ width:1em; height:1em; }
+
+/* Fora do modo de personalizar, o painel fica limpo: sem alça nem botão de opções */
+#painel:not(.modo-personalizar) .arrastar-alca,
+#painel:not(.modo-personalizar) .bloco-opcoes-btn{ display:none; }
+#painel.modo-personalizar .bloco{ outline:1.5px dashed var(--anel); outline-offset:3px; }
+
+/* ---------- Barra de personalização ---------- */
+.barra-personalizar{
+  max-width:1240px; margin:0 auto 14px; padding:14px 16px; background:var(--lilas-fundo);
+  border-radius:var(--raio-lg); display:flex; flex-direction:column; gap:10px;
+}
+.barra-personalizar-texto{ margin:0; font-size:.82rem; font-weight:600; color:var(--lilas-tinta); }
+.barra-personalizar-acoes{ display:flex; flex-wrap:wrap; gap:8px; }
+.barra-btn{ width:auto; padding:.55rem 1rem; min-height:40px; font-size:.8rem; }
+.cards-ocultos{ border-top:1px solid rgba(106,74,160,.2); padding-top:10px; }
+.cards-ocultos-titulo{ margin:0 0 8px; font-size:.72rem; font-weight:700; text-transform:uppercase; letter-spacing:.04em; color:var(--lilas-tinta); }
+.cards-ocultos-lista{ display:flex; flex-wrap:wrap; gap:8px; }
+.card-oculto-chip{
+  display:flex; align-items:center; gap:8px; background:var(--superficie); border-radius:99px;
+  padding:6px 8px 6px 14px; font-size:.78rem; font-weight:600; color:var(--tinta);
+}
+.card-oculto-chip button{
+  display:flex; align-items:center; gap:4px; background:var(--lilas-tinta); color:#fff; border:none;
+  border-radius:99px; padding:5px 10px; font-size:.72rem; font-weight:700;
+}
+.card-oculto-chip button svg{ width:.85em; height:.85em; }
+
+/* ---------- Seletor de cor (diálogo do card) ---------- */
+.cor-escolha{ display:flex; gap:8px; margin-top:8px; flex-wrap:wrap; }
+.cor-escolha label{
+  width:2.2rem; height:2.2rem; min-width:34px; min-height:34px; border-radius:50%; cursor:pointer;
+  display:flex; align-items:center; justify-content:center; border:2px solid transparent;
+}
+.cor-escolha label span{ width:100%; height:100%; border-radius:50%; display:block; }
+.cor-escolha label[data-cor="rosa"] span{ background:var(--rosa-fundo); box-shadow:inset 0 0 0 1.5px var(--rosa-tinta); }
+.cor-escolha label[data-cor="lilas"] span{ background:var(--lilas-fundo); box-shadow:inset 0 0 0 1.5px var(--lilas-tinta); }
+.cor-escolha label[data-cor="ceu"] span{ background:var(--ceu-fundo); box-shadow:inset 0 0 0 1.5px var(--ceu-tinta); }
+.cor-escolha label[data-cor="menta"] span{ background:var(--menta-fundo); box-shadow:inset 0 0 0 1.5px var(--menta-tinta); }
+.cor-escolha label[data-cor="pessego"] span{ background:var(--pessego-fundo); box-shadow:inset 0 0 0 1.5px var(--pessego-tinta); }
+.cor-escolha label[data-cor="areia"] span{ background:var(--areia-fundo); box-shadow:inset 0 0 0 1.5px var(--areia-tinta); }
+.cor-escolha label[data-cor="dourado"] span{ background:var(--dourado-fundo); box-shadow:inset 0 0 0 1.5px var(--dourado-tinta); }
+.cor-escolha input{ display:none; }
+.cor-escolha label:has(input:checked){ border-color:var(--tinta); }
+
+/* ---------- Card personalizado (checklist genérico) ---------- */
+.bloco-personalizado-form{ display:flex; gap:8px; margin-top:10px; }
+.bloco-personalizado-form input{
+  flex:1; min-width:0; padding:.6rem .75rem; min-height:40px; border-radius:var(--raio-pill); border:1.5px solid var(--linha);
+  font-family:var(--fonte-corpo); font-size:.82rem; background:var(--superficie); color:var(--tinta);
+}
 
 /* ---------- Foco de hoje ---------- */
 .foco-item{ background:rgba(255,255,255,.55); }

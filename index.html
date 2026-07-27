@@ -8,7 +8,7 @@
 <link rel="manifest" href="./manifest.webmanifest">
 <link rel="icon" href="./icon-192.png">
 <link rel="apple-touch-icon" href="./icon-192.png">
-<link rel="stylesheet" href="./styles.css?v=10">
+<link rel="stylesheet" href="./styles.css?v=11">
 </head>
 <body>
 
@@ -52,6 +52,10 @@
   <symbol id="i-seta-dir" viewBox="0 0 20 20"><path d="M7.5 4.5 14 10l-6.5 5.5" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"/></symbol>
   <symbol id="i-estrela" viewBox="0 0 20 20"><path d="M10 2.8l1.9 4.6 4.9.4-3.7 3.3 1.1 4.8L10 13.4l-4.2 2.5 1.1-4.8-3.7-3.3 4.9-.4Z" fill="currentColor" stroke="none"/></symbol>
   <symbol id="i-orelhas" viewBox="0 0 20 20"><path d="M4 8 3 3l4 3M16 8l1-5-4 3" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"/></symbol>
+  <symbol id="i-tres-pontos" viewBox="0 0 20 20"><g fill="currentColor"><circle cx="10" cy="4.5" r="1.6"/><circle cx="10" cy="10" r="1.6"/><circle cx="10" cy="15.5" r="1.6"/></g></symbol>
+  <symbol id="i-olho" viewBox="0 0 20 20"><path d="M2 10s3-5.5 8-5.5S18 10 18 10s-3 5.5-8 5.5S2 10 2 10Z" fill="none" stroke="currentColor" stroke-width="1.4" stroke-linejoin="round"/><circle cx="10" cy="10" r="2.4" fill="none" stroke="currentColor" stroke-width="1.4"/></symbol>
+  <symbol id="i-olho-fechado" viewBox="0 0 20 20"><path d="M2.5 2.5l15 15M6 6.2C3.6 7.6 2 10 2 10s3 5.5 8 5.5c1.5 0 2.8-.4 3.9-1M9 4.6c.3 0 .6-.1 1-.1 5 0 8 5.5 8 5.5s-.7 1.3-1.9 2.6M8.2 11.8a2.4 2.4 0 0 1 3.4-3.4" fill="none" stroke="currentColor" stroke-width="1.4" stroke-linecap="round" stroke-linejoin="round"/></symbol>
+  <symbol id="i-copiar" viewBox="0 0 20 20"><rect x="7" y="7" width="10" height="10" rx="2" fill="none" stroke="currentColor" stroke-width="1.4"/><path d="M4.5 13.5H4a1.5 1.5 0 0 1-1.5-1.5V4A1.5 1.5 0 0 1 4 2.5h8A1.5 1.5 0 0 1 13.5 4v.5" fill="none" stroke="currentColor" stroke-width="1.4" stroke-linecap="round"/></symbol>
   <symbol id="i-mascote" viewBox="0 0 40 46">
     <path d="M10 45V30a10 10 0 0 1 20 0v15Z" fill="#FFFDF9" stroke="#B23A4A" stroke-width=".8" stroke-opacity=".35"/>
     <path d="M14.5 28.5 17 31l3-2 3 2 2.5-2.5" fill="none" stroke="#B23A4A" stroke-width="1.3" stroke-linecap="round" stroke-linejoin="round"/>
@@ -130,6 +134,21 @@
 
   <!-- ===================== HOJE ===================== -->
   <div class="vista" id="vistaHoje" role="tabpanel">
+
+    <div id="barraPersonalizar" class="barra-personalizar" hidden>
+      <p class="barra-personalizar-texto">Modo de personalização ativo — arraste, edite ou oculte os cards.</p>
+      <div class="barra-personalizar-acoes">
+        <button type="button" id="adicionarCardBtn" class="botao botao-secundario barra-btn"><svg><use href="#i-mais"/></svg>Adicionar card</button>
+        <button type="button" id="restaurarPadraoBtn" class="botao botao-secundario barra-btn">Restaurar padrão</button>
+        <button type="button" id="cancelarPersonalizarBtn" class="botao botao-secundario barra-btn">Cancelar alterações</button>
+        <button type="button" id="concluirPersonalizarBtn" class="botao botao-primario barra-btn">Concluir e salvar</button>
+      </div>
+      <div id="cardsOcultos" class="cards-ocultos" hidden>
+        <p class="cards-ocultos-titulo">Cards ocultos</p>
+        <div id="listaCardsOcultos" class="cards-ocultos-lista"></div>
+      </div>
+    </div>
+
     <div class="painel" id="painel">
 
       <article class="bloco bloco--foco" data-cor="pessego" data-id="foco" draggable="true">
@@ -342,12 +361,55 @@
           <div class="config-item-texto"><strong>Notificações</strong><span>Lembrete no aparelho, mesmo com o app fechado</span></div>
           <button class="botao botao-secundario" id="notifBtn" style="width:auto;padding:9px 16px;" type="button">Ativar</button>
         </div>
+        <div class="config-item">
+          <div class="config-item-texto"><strong>Personalizar painel</strong><span>Mostra alças, cor/ícone e opção de ocultar em cada card da aba Hoje</span></div>
+          <button class="interruptor" id="interruptorPersonalizar" aria-pressed="false" aria-label="Ativar modo de personalizar painel" type="button"></button>
+        </div>
       </div>
       <p class="bloco-sub">Conta, tema e tamanho da letra ficam no menu do avatar, no canto superior do cabeçalho.</p>
     </div>
   </div>
 
 </div>
+
+<!-- Diálogo: opções do card (título, cor, ícone, largura, ocultar/duplicar/excluir) -->
+<dialog id="blocoDialog" class="dialogo">
+  <form id="blocoForm" method="dialog" class="form-tarefa">
+    <h2 id="blocoDialogTitulo">Opções do card</h2>
+    <label>
+      Título
+      <input type="text" id="campoBlocoTitulo" maxlength="40" placeholder="Nome do card">
+    </label>
+    <fieldset class="dias-fieldset">
+      <legend>Cor</legend>
+      <div class="cor-escolha" id="corEscolha">
+        <label data-cor="rosa"><input type="radio" name="corBloco" value="rosa"><span></span></label>
+        <label data-cor="lilas"><input type="radio" name="corBloco" value="lilas"><span></span></label>
+        <label data-cor="ceu"><input type="radio" name="corBloco" value="ceu"><span></span></label>
+        <label data-cor="menta"><input type="radio" name="corBloco" value="menta"><span></span></label>
+        <label data-cor="pessego"><input type="radio" name="corBloco" value="pessego"><span></span></label>
+        <label data-cor="areia"><input type="radio" name="corBloco" value="areia"><span></span></label>
+        <label data-cor="dourado"><input type="radio" name="corBloco" value="dourado"><span></span></label>
+      </div>
+    </fieldset>
+    <fieldset class="dias-fieldset">
+      <legend>Ícone</legend>
+      <div class="icone-escolha" id="iconeEscolhaBloco"></div>
+    </fieldset>
+    <label class="linha-checkbox">
+      <input type="checkbox" id="campoBlocoLarga"> Card largo (ocupa a linha inteira)
+    </label>
+    <div class="form-acoes">
+      <button type="button" id="ocultarBlocoBtn" class="botao botao-secundario"><svg><use href="#i-olho-fechado"/></svg></button>
+      <button type="button" id="duplicarBlocoBtn" class="botao botao-secundario"><svg><use href="#i-copiar"/></svg></button>
+      <button type="button" id="excluirBlocoBtn" class="botao botao-secundario" hidden>Excluir card</button>
+    </div>
+    <div class="form-acoes">
+      <button type="button" id="fecharBlocoDialog" class="botao botao-secundario">Fechar</button>
+      <button type="submit" class="botao botao-primario">Salvar</button>
+    </div>
+  </form>
+</dialog>
 
 <!-- Diálogo único: novo item / editar item -->
 <dialog id="itemDialog" class="dialogo">

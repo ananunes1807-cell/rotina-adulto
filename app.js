@@ -32,11 +32,38 @@ const $ = id => document.getElementById(id);
 const CATEGORIA_ICONE = { higiene:'🧼', casa:'🧹', trabalho:'💼', saude:'💊', outro:'✨' };
 const ICONE_SVG = { comprimido:'#i-comprimido', gota:'#i-gota', tigela:'#i-tigela', lua:'#i-lua', coracao:'#i-coracao' };
 
+// ---------- Registro dos cards de sistema (padrões de fábrica) ----------
+const BLOCOS_SISTEMA = {
+  foco:        { titulo:'Foco de hoje',        icone:'i-alvo',     cor:'pessego' },
+  prioridades: { titulo:'Prioridades',         icone:'i-bandeira', cor:'rosa' },
+  agenda:      { titulo:'Agenda do dia',       icone:'i-relogio',  cor:'ceu' },
+  tarefas:     { titulo:'Tarefas',             icone:'i-lista',    cor:'lilas' },
+  depois:      { titulo:'Fazer depois',        icone:'i-bandeja',  cor:'areia' },
+  mente:       { titulo:'Descarregar a mente', icone:'i-nuvem',    cor:'lilas' },
+  autocuidado: { titulo:'Autocuidado',         icone:'i-coracao',  cor:'menta' },
+  habitos:     { titulo:'Hábitos',             icone:'i-repetir',  cor:'rosa' },
+  agua:        { titulo:'Água',                icone:'i-gota',     cor:'ceu' },
+  refeicoes:   { titulo:'Refeições',           icone:'i-tigela',   cor:'pessego' },
+  humor:       { titulo:'Humor e energia',     icone:'i-calma',    cor:'lilas' },
+  lembrar:     { titulo:'Não esquecer',        icone:'i-pin',      cor:'areia' },
+  conquistas:  { titulo:'Conquistas do dia',   icone:'i-pata',     cor:'dourado' }
+};
+const ICONES_ESCOLHA_BLOCO = ['i-alvo','i-bandeira','i-relogio','i-lista','i-bandeja','i-nuvem','i-coracao','i-repetir','i-gota','i-tigela','i-calma','i-pin','i-pata','i-estrela','i-config'];
+const CORES_ESCOLHA_BLOCO = ['rosa','lilas','ceu','menta','pessego','areia','dourado'];
+function painelPadrao() {
+  return Object.keys(BLOCOS_SISTEMA).map(id => ({
+    id, tipo: 'sistema', oculto: false, largura: 'normal', cor: null, icone: null, titulo: null
+  }));
+}
+
 let uid = null;
 let dadosUsuario = null; // documento inteiro em memória
 let itemAtualChat = null;
 let itemEmEdicao = null;
 let diaDialogAtual = null;
+let blocoEmEdicao = null;
+let modoPersonalizar = false;
+let painelSnapshotAntes = null;
 
 // ---------- Tema claro/escuro ----------
 function aplicarTema(tema) {
@@ -158,7 +185,8 @@ async function garantirDocumento(user) {
     await setDoc(ref, {
       perfil: { nome: user.displayName || '', email: user.email || '', criadoEm: new Date().toISOString() },
       itens: [], concluidas: {}, foco: {}, mente: {}, agua: {}, refeicoes: {}, humor: {},
-      lembretes: [], conquistasManuais: {}, pushTokens: []
+      lembretes: [], conquistasManuais: {}, pushTokens: [],
+      painel: { blocos: painelPadrao() }
     });
     return;
   }
@@ -167,6 +195,10 @@ async function garantirDocumento(user) {
     // migração automática do formato antigo (só tarefas) pro novo (itens com tipo)
     const itens = dados.tarefas.map(t => ({ ...t, tipo: 'tarefa' }));
     await updateDoc(ref, { itens, tarefas: deleteField() });
+  }
+  if (!dados.painel || !Array.isArray(dados.painel.blocos) || dados.painel.blocos.length === 0) {
+    // migração automática pra quem já tinha conta antes do painel personalizável existir
+    await updateDoc(ref, { painel: { blocos: painelPadrao() } });
   }
 }
 
@@ -280,6 +312,7 @@ function renderizarTudo() {
   renderizarLembretes();
   renderizarConquistasHoje();
   renderizarRotina();
+  aplicarPersonalizacaoPainel();
   montarCalendarioMini();
   montarCalendarioGrande('calGrande', null, 'agenda', true);
   renderizarProgressoConquistas();
@@ -873,45 +906,313 @@ function renderizarProgressoConquistas() {
   });
 }
 
-// ---------- Reordenar blocos (arrastar + teclado) ----------
+// ---------- Painel personalizável ----------
+function resolverAparenciaBloco(entry) {
+  const padrao = BLOCOS_SISTEMA[entry.id];
+  return {
+    titulo: entry.titulo || (padrao ? padrao.titulo : 'Novo card'),
+    icone: entry.icone || (padrao ? padrao.icone : 'i-estrela'),
+    cor: entry.cor || (padrao ? padrao.cor : 'lilas')
+  };
+}
+function encontrarBloco(id) {
+  return ((dadosUsuario.painel && dadosUsuario.painel.blocos) || []).find(b => b.id === id);
+}
+function atualizarBloco(id, mudancas) {
+  const blocos = ((dadosUsuario.painel && dadosUsuario.painel.blocos) || []).map(b => b.id === id ? { ...b, ...mudancas } : b);
+  return updateDoc(doc(db, 'usuarios', uid), { painel: { blocos } });
+}
+
+function garantirControlesEdicao(el, id) {
+  const cab = el.querySelector('.bloco-cab');
+  if (!cab) return;
+  let controles = cab.querySelector('.bloco-controles');
+  if (!controles) {
+    controles = document.createElement('div');
+    controles.className = 'bloco-controles';
+    // move qualquer botão de ação já existente (ex: "+" de adicionar item) pra dentro da envoltória
+    [...cab.children].forEach(filho => {
+      if (filho !== cab.querySelector('.bloco-titulo-grupo')) controles.appendChild(filho);
+    });
+    cab.appendChild(controles);
+  }
+  if (!controles.querySelector('.arrastar-alca')) {
+    const alca = document.createElement('button');
+    alca.type = 'button'; alca.className = 'arrastar-alca'; alca.tabIndex = 0;
+    alca.setAttribute('aria-label', 'Reordenar bloco');
+    alca.innerHTML = '<svg><use href="#i-alca"/></svg>';
+    controles.insertBefore(alca, controles.firstChild);
+  }
+  if (!controles.querySelector('.bloco-opcoes-btn')) {
+    const opcoes = document.createElement('button');
+    opcoes.type = 'button'; opcoes.className = 'bloco-opcoes-btn';
+    opcoes.setAttribute('aria-label', 'Opções do card');
+    opcoes.innerHTML = '<svg><use href="#i-tres-pontos"/></svg>';
+    opcoes.addEventListener('click', () => abrirEdicaoBloco(id));
+    controles.appendChild(opcoes);
+  }
+}
+
+function criarBlocoPersonalizado(entry) {
+  const el = document.createElement('article');
+  el.className = 'bloco'; el.draggable = true; el.dataset.id = entry.id;
+  el.innerHTML = `
+    <div class="bloco-cab">
+      <div class="bloco-titulo-grupo">
+        <span class="bloco-icone"><svg><use href="#i-estrela"/></svg></span>
+        <span class="bloco-titulo"></span>
+      </div>
+    </div>
+    <ul class="lista-itens" data-lista-personalizada></ul>
+    <p class="bloco-sub" data-vazio-personalizada hidden>Nada por aqui ainda.</p>
+    <form class="bloco-personalizado-form">
+      <input type="text" maxlength="60" placeholder="Adicionar item…">
+      <button type="submit" class="botao-icone-destaque" aria-label="Adicionar item"><svg><use href="#i-mais"/></svg></button>
+    </form>
+  `;
+  el.querySelector('.bloco-personalizado-form').addEventListener('submit', e => {
+    e.preventDefault();
+    const input = e.target.querySelector('input');
+    const texto = input.value.trim();
+    if (!texto) return;
+    adicionarItemPersonalizado(entry.id, texto);
+    input.value = '';
+  });
+  return el;
+}
+
+function renderizarItensPersonalizado(entry, el) {
+  const ul = el.querySelector('[data-lista-personalizada]');
+  const vazio = el.querySelector('[data-vazio-personalizada]');
+  if (!ul) return;
+  ul.innerHTML = '';
+  const itensBloco = entry.itens || [];
+  itensBloco.forEach(item => {
+    const li = document.createElement('li');
+    li.className = 'item' + (item.feita ? ' feita' : '');
+    li.innerHTML = `
+      <button class="marca-check" aria-label="Marcar concluído"><svg><use href="#i-check"/></svg><svg class="patinha"><use href="#i-pata"/></svg></button>
+      <div class="item-corpo"><p class="item-nome"></p></div>
+      <div class="item-acoes"><button type="button" class="item-acao" aria-label="Excluir item"><svg><use href="#i-lixo"/></svg></button></div>
+    `;
+    li.querySelector('.item-nome').textContent = item.texto;
+    li.querySelector('.marca-check').addEventListener('click', () => alternarItemPersonalizado(entry.id, item.id));
+    li.querySelector('.item-acao').addEventListener('click', () => excluirItemPersonalizado(entry.id, item.id));
+    ul.appendChild(li);
+  });
+  if (vazio) vazio.hidden = itensBloco.length > 0;
+}
+async function adicionarItemPersonalizado(id, texto) {
+  const bloco = encontrarBloco(id); if (!bloco) return;
+  const itens = [...(bloco.itens || []), { id: crypto.randomUUID(), texto, feita: false }];
+  await atualizarBloco(id, { itens });
+}
+async function alternarItemPersonalizado(id, itemId) {
+  const bloco = encontrarBloco(id); if (!bloco) return;
+  const itens = (bloco.itens || []).map(i => i.id === itemId ? { ...i, feita: !i.feita } : i);
+  await atualizarBloco(id, { itens });
+}
+async function excluirItemPersonalizado(id, itemId) {
+  const bloco = encontrarBloco(id); if (!bloco) return;
+  const itens = (bloco.itens || []).filter(i => i.id !== itemId);
+  await atualizarBloco(id, { itens });
+}
+
+function aplicarPersonalizacaoPainel() {
+  const painel = $('painel');
+  const blocos = (dadosUsuario.painel && dadosUsuario.painel.blocos && dadosUsuario.painel.blocos.length)
+    ? dadosUsuario.painel.blocos : painelPadrao();
+  const idsVistos = new Set();
+  blocos.forEach(entry => {
+    idsVistos.add(entry.id);
+    let el = [...painel.children].find(c => c.dataset.id === entry.id);
+    if (!el) {
+      if (entry.tipo !== 'personalizado') return;
+      el = criarBlocoPersonalizado(entry);
+    }
+    painel.appendChild(el);
+    el.hidden = !!entry.oculto;
+    el.classList.toggle('bloco--larga', entry.largura === 'larga');
+    const aparencia = resolverAparenciaBloco(entry);
+    el.dataset.cor = aparencia.cor;
+    const iconeUse = el.querySelector('.bloco-icone svg use');
+    if (iconeUse) iconeUse.setAttribute('href', '#' + aparencia.icone);
+    const tituloEl = el.querySelector('.bloco-titulo');
+    if (tituloEl) tituloEl.textContent = aparencia.titulo;
+    garantirControlesEdicao(el, entry.id);
+    if (entry.tipo === 'personalizado') renderizarItensPersonalizado(entry, el);
+  });
+  [...painel.querySelectorAll('.bloco[data-id^="custom-"]')].forEach(el => {
+    if (!idsVistos.has(el.dataset.id)) el.remove();
+  });
+  painel.classList.toggle('modo-personalizar', modoPersonalizar);
+  renderizarCardsOcultos(blocos);
+}
+
+function renderizarCardsOcultos(blocos) {
+  const secao = $('cardsOcultos');
+  const lista = $('listaCardsOcultos');
+  const ocultos = blocos.filter(b => b.oculto);
+  lista.innerHTML = '';
+  secao.hidden = !modoPersonalizar || ocultos.length === 0;
+  ocultos.forEach(b => {
+    const aparencia = resolverAparenciaBloco(b);
+    const chip = document.createElement('div'); chip.className = 'card-oculto-chip';
+    chip.innerHTML = '<span></span><button type="button"><svg><use href="#i-olho"/></svg>Mostrar</button>';
+    chip.querySelector('span').textContent = aparencia.titulo;
+    chip.querySelector('button').addEventListener('click', () => atualizarBloco(b.id, { oculto: false }));
+    lista.appendChild(chip);
+  });
+}
+
+// ---------- Diálogo de opções do card ----------
+$('iconeEscolhaBloco').innerHTML = ICONES_ESCOLHA_BLOCO
+  .map(ic => `<label><input type="radio" name="iconeBloco" value="${ic}"><svg><use href="#${ic}"/></svg></label>`)
+  .join('');
+
+function abrirEdicaoBloco(id) {
+  const bloco = encontrarBloco(id);
+  if (!bloco) return;
+  blocoEmEdicao = bloco;
+  const aparencia = resolverAparenciaBloco(bloco);
+  $('blocoDialogTitulo').textContent = 'Opções — ' + aparencia.titulo;
+  $('campoBlocoTitulo').value = bloco.titulo || '';
+  $('campoBlocoTitulo').placeholder = aparencia.titulo;
+  document.querySelectorAll('#corEscolha input').forEach(i => { i.checked = i.value === aparencia.cor; });
+  document.querySelectorAll('#iconeEscolhaBloco input').forEach(i => { i.checked = i.value === aparencia.icone; });
+  $('campoBlocoLarga').checked = bloco.largura === 'larga';
+  $('excluirBlocoBtn').hidden = bloco.tipo !== 'personalizado';
+  $('ocultarBlocoBtn').innerHTML = bloco.oculto
+    ? '<svg><use href="#i-olho"/></svg> Mostrar'
+    : '<svg><use href="#i-olho-fechado"/></svg> Ocultar';
+  $('blocoDialog').showModal();
+}
+
+$('blocoForm').addEventListener('submit', async () => {
+  if (!blocoEmEdicao) return;
+  const titulo = $('campoBlocoTitulo').value.trim();
+  const cor = document.querySelector('#corEscolha input:checked')?.value || null;
+  const icone = document.querySelector('#iconeEscolhaBloco input:checked')?.value || null;
+  const largura = $('campoBlocoLarga').checked ? 'larga' : 'normal';
+  await atualizarBloco(blocoEmEdicao.id, { titulo: titulo || null, cor, icone, largura });
+  blocoEmEdicao = null;
+});
+$('fecharBlocoDialog').addEventListener('click', () => { $('blocoDialog').close(); blocoEmEdicao = null; });
+
+$('ocultarBlocoBtn').addEventListener('click', async () => {
+  if (!blocoEmEdicao) return;
+  await atualizarBloco(blocoEmEdicao.id, { oculto: !blocoEmEdicao.oculto });
+  $('blocoDialog').close();
+  blocoEmEdicao = null;
+});
+
+$('duplicarBlocoBtn').addEventListener('click', async () => {
+  if (!blocoEmEdicao) return;
+  const aparencia = resolverAparenciaBloco(blocoEmEdicao);
+  const novo = {
+    id: 'custom-' + crypto.randomUUID(), tipo: 'personalizado', oculto: false,
+    largura: blocoEmEdicao.largura || 'normal', cor: aparencia.cor, icone: aparencia.icone,
+    titulo: aparencia.titulo + ' (cópia)',
+    itens: blocoEmEdicao.tipo === 'personalizado' ? (blocoEmEdicao.itens || []).map(i => ({ ...i, id: crypto.randomUUID() })) : []
+  };
+  const blocos = [...((dadosUsuario.painel && dadosUsuario.painel.blocos) || []), novo];
+  await updateDoc(doc(db, 'usuarios', uid), { painel: { blocos } });
+  $('blocoDialog').close();
+  blocoEmEdicao = null;
+});
+
+$('excluirBlocoBtn').addEventListener('click', async () => {
+  if (!blocoEmEdicao || blocoEmEdicao.tipo !== 'personalizado') return;
+  if (!confirm('Excluir este card personalizado? Essa ação não pode ser desfeita.')) return;
+  const blocos = ((dadosUsuario.painel && dadosUsuario.painel.blocos) || []).filter(b => b.id !== blocoEmEdicao.id);
+  await updateDoc(doc(db, 'usuarios', uid), { painel: { blocos } });
+  $('blocoDialog').close();
+  blocoEmEdicao = null;
+});
+
+// ---------- Modo "Personalizar painel" ----------
+function sairDoModoPersonalizar() {
+  modoPersonalizar = false;
+  painelSnapshotAntes = null;
+  $('interruptorPersonalizar').setAttribute('aria-pressed', 'false');
+  $('barraPersonalizar').hidden = true;
+  aplicarPersonalizacaoPainel();
+}
+$('interruptorPersonalizar').addEventListener('click', () => {
+  if (modoPersonalizar) { sairDoModoPersonalizar(); return; }
+  painelSnapshotAntes = JSON.parse(JSON.stringify((dadosUsuario.painel && dadosUsuario.painel.blocos) || painelPadrao()));
+  modoPersonalizar = true;
+  $('interruptorPersonalizar').setAttribute('aria-pressed', 'true');
+  $('barraPersonalizar').hidden = false;
+  aplicarPersonalizacaoPainel();
+});
+$('adicionarCardBtn').addEventListener('click', async () => {
+  const novo = {
+    id: 'custom-' + crypto.randomUUID(), tipo: 'personalizado', oculto: false,
+    largura: 'normal', cor: 'lilas', icone: 'i-estrela', titulo: 'Novo card', itens: []
+  };
+  const blocos = [...((dadosUsuario.painel && dadosUsuario.painel.blocos) || []), novo];
+  await updateDoc(doc(db, 'usuarios', uid), { painel: { blocos } });
+  abrirEdicaoBloco(novo.id);
+});
+$('restaurarPadraoBtn').addEventListener('click', async () => {
+  if (!confirm('Restaurar a organização padrão? Os cards personalizados continuam existindo, mas os de sistema voltam pra ordem, cor e visibilidade originais.')) return;
+  const personalizados = ((dadosUsuario.painel && dadosUsuario.painel.blocos) || []).filter(b => b.tipo === 'personalizado');
+  const blocos = [...painelPadrao(), ...personalizados];
+  await updateDoc(doc(db, 'usuarios', uid), { painel: { blocos } });
+});
+$('cancelarPersonalizarBtn').addEventListener('click', async () => {
+  if (painelSnapshotAntes) {
+    await updateDoc(doc(db, 'usuarios', uid), { painel: { blocos: painelSnapshotAntes } });
+  }
+  sairDoModoPersonalizar();
+});
+$('concluirPersonalizarBtn').addEventListener('click', sairDoModoPersonalizar);
+
+// ---------- Reordenar blocos (arrastar + teclado, só no modo personalizar) ----------
 (function ligarReordenacao() {
   const painel = $('painel');
   let arrastando = null;
-  function reflow(el) { void el.offsetWidth; }
-  painel.querySelectorAll('.bloco').forEach(bloco => {
-    bloco.addEventListener('dragstart', () => { arrastando = bloco; bloco.classList.add('arrastando'); });
-    bloco.addEventListener('dragend', () => { bloco.classList.remove('arrastando'); arrastando = null; salvarOrdemBlocos(); });
-    bloco.addEventListener('dragover', e => {
-      e.preventDefault();
-      if (!arrastando || arrastando === bloco) return;
-      const depois = [...painel.children].indexOf(bloco) > [...painel.children].indexOf(arrastando);
-      painel.insertBefore(arrastando, depois ? bloco.nextSibling : bloco);
-    });
-    const alca = bloco.querySelector('.arrastar-alca');
-    if (alca) {
-      alca.addEventListener('keydown', e => {
-        if (e.key !== 'ArrowUp' && e.key !== 'ArrowDown') return;
-        e.preventDefault();
-        const irmao = e.key === 'ArrowUp' ? bloco.previousElementSibling : bloco.nextElementSibling;
-        if (!irmao) return;
-        if (e.key === 'ArrowUp') painel.insertBefore(bloco, irmao); else painel.insertBefore(irmao, bloco);
-        alca.focus();
-        salvarOrdemBlocos();
-      });
-    }
+
+  painel.addEventListener('dragstart', e => {
+    if (!modoPersonalizar) { e.preventDefault(); return; }
+    const bloco = e.target.closest('.bloco');
+    if (!bloco) return;
+    arrastando = bloco;
+    bloco.classList.add('arrastando');
   });
+  painel.addEventListener('dragend', e => {
+    const bloco = e.target.closest('.bloco');
+    if (bloco) bloco.classList.remove('arrastando');
+    if (arrastando) { arrastando = null; salvarOrdemBlocos(); }
+  });
+  painel.addEventListener('dragover', e => {
+    const bloco = e.target.closest('.bloco');
+    if (!arrastando || !bloco || bloco === arrastando) return;
+    e.preventDefault();
+    const filhos = [...painel.children];
+    const depois = filhos.indexOf(bloco) > filhos.indexOf(arrastando);
+    painel.insertBefore(arrastando, depois ? bloco.nextSibling : bloco);
+  });
+  painel.addEventListener('keydown', e => {
+    const alca = e.target.closest('.arrastar-alca');
+    if (!alca || !modoPersonalizar) return;
+    if (e.key !== 'ArrowUp' && e.key !== 'ArrowDown') return;
+    const bloco = alca.closest('.bloco');
+    e.preventDefault();
+    const irmao = e.key === 'ArrowUp' ? bloco.previousElementSibling : bloco.nextElementSibling;
+    if (!irmao) return;
+    if (e.key === 'ArrowUp') painel.insertBefore(bloco, irmao); else painel.insertBefore(irmao, bloco);
+    alca.focus();
+    salvarOrdemBlocos();
+  });
+
   function salvarOrdemBlocos() {
-    const ordem = [...painel.children].map(b => b.dataset.id);
-    localStorage.setItem('rotina-ordem-blocos', JSON.stringify(ordem));
-  }
-  const ordemSalva = localStorage.getItem('rotina-ordem-blocos');
-  if (ordemSalva) {
-    try {
-      JSON.parse(ordemSalva).forEach(id => {
-        const bloco = painel.querySelector(`[data-id="${id}"]`);
-        if (bloco) painel.appendChild(bloco);
-      });
-    } catch (e) {}
+    const ordemIds = [...painel.children].map(b => b.dataset.id);
+    const atuais = (dadosUsuario.painel && dadosUsuario.painel.blocos) || painelPadrao();
+    const porId = new Map(atuais.map(b => [b.id, b]));
+    const blocos = ordemIds.map(id => porId.get(id)).filter(Boolean);
+    updateDoc(doc(db, 'usuarios', uid), { painel: { blocos } });
   }
 })();
 

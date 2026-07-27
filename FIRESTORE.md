@@ -63,6 +63,25 @@ Campos do documento:
     { id: "uuid", texto: "Levar guarda-chuva", criadoEm: "2026-07-22T00:00:00.000Z" }
   ],
 
+  // Personalização do painel (modo "Personalizar painel" em Config.): ordem,
+  // visibilidade, cor/ícone/título e largura de cada card. A ordem do array
+  // É a ordem visual — arrastar um card reescreve esse array inteiro.
+  painel: {
+    blocos: [
+      {
+        id: "foco",              // um dos 13 ids de sistema, ou "custom-<uuid>"
+        tipo: "sistema",         // sistema | personalizado
+        oculto: false,           // true = escondido do painel, mas não apagado
+        largura: "normal",       // normal | larga (larga ocupa a linha inteira)
+        cor: null,                // null = cor padrão do card; ou um token (rosa|lilas|ceu|menta|pessego|areia|dourado)
+        icone: null,              // null = ícone padrão; ou um id de símbolo (ex: "i-estrela")
+        titulo: null               // null = título padrão; ou texto customizado
+        // cards personalizados (tipo:"personalizado") também têm:
+        // itens: [ { id:"uuid", texto:"...", feita:false } ]
+      }
+    ]
+  },
+
   pushTokens: [
     {
       token: "token-do-fcm-gerado-pelo-navegador",
@@ -81,7 +100,8 @@ Campos do documento:
 > Documentos criados antes dessa versão tinham um campo `tarefas` (sem
 > `tipo`). O app migra sozinho no primeiro carregamento: copia cada tarefa
 > antiga pra `itens` com `tipo: "tarefa"` e remove o campo velho. Não precisa
-> fazer nada manualmente.
+> fazer nada manualmente. Da mesma forma, contas sem o campo `painel` ganham
+> a lista padrão dos 13 cards de sistema no primeiro carregamento.
 
 ### Por que `concluidas` é um mapa por data, e não um campo dentro do item
 
