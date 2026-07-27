@@ -92,6 +92,7 @@ function aplicarFonte(id) {
   $('fonteNivelTexto').textContent = NIVEIS_FONTE[indice].rotulo;
   $('fonteMenos').disabled = indice === 0;
   $('fonteMais').disabled = indice === NIVEIS_FONTE.length - 1;
+  $('fonteResetar').hidden = indice === 0;
 }
 function indiceFonteAtual() {
   const atual = document.documentElement.getAttribute('data-fonte') || 'normal';
@@ -107,6 +108,10 @@ $('fonteMais').addEventListener('click', () => {
   const novo = NIVEIS_FONTE[Math.min(NIVEIS_FONTE.length - 1, indiceFonteAtual() + 1)].id;
   localStorage.setItem('fonte', novo);
   aplicarFonte(novo);
+});
+$('fonteResetar').addEventListener('click', () => {
+  localStorage.setItem('fonte', 'normal');
+  aplicarFonte('normal');
 });
 
 // ---------- Menu de conta (avatar) ----------

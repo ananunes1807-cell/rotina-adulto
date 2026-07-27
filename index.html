@@ -8,7 +8,7 @@
 <link rel="manifest" href="./manifest.webmanifest">
 <link rel="icon" href="./icon-192.png">
 <link rel="apple-touch-icon" href="./icon-192.png">
-<link rel="stylesheet" href="./styles.css?v=12">
+<link rel="stylesheet" href="./styles.css?v=13">
 </head>
 <body>
 
@@ -119,6 +119,7 @@
               <button type="button" id="fonteMenos" aria-label="Diminuir tamanho da letra">A−</button>
               <span id="fonteNivelTexto">Normal</span>
               <button type="button" id="fonteMais" aria-label="Aumentar tamanho da letra">A+</button>
+              <button type="button" id="fonteResetar" class="fonte-resetar" hidden>Voltar ao tamanho normal</button>
             </div>
           </div>
           <button id="logoutBtn" class="conta-sair" type="button"><svg><use href="#i-sair"/></svg>Sair</button>
@@ -471,9 +472,10 @@
 </dialog>
 
 <!-- Diálogo único: novo item / editar item -->
-<dialog id="itemDialog" class="dialogo">
+<dialog id="itemDialog" class="dialogo dialogo-compacta">
   <form id="itemForm" method="dialog" class="form-tarefa">
     <h2 id="itemDialogTitulo">Novo item</h2>
+    <div class="form-campos">
     <label>
       Tipo
       <select id="campoTipo">
@@ -575,6 +577,7 @@
         </label>
       </fieldset>
     </details>
+    </div>
 
     <div class="form-acoes">
       <button type="button" id="excluirItem" class="botao botao-secundario" hidden>Excluir</button>
