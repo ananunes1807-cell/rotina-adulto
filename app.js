@@ -280,11 +280,11 @@ function renderizarTudo() {
   renderizarLembretes();
   renderizarConquistasHoje();
   renderizarRotina();
-  montarCalendarioGrande('painelCal', null, 'agenda', true);
-  montarCalendarioGrande('calGrande', 'calGrandeTitulo', 'agenda', false);
-  montarCalendarioGrande('progMesCalendario', null, 'progresso', false);
+  montarCalendarioMini();
+  montarCalendarioGrande('calGrande', null, 'agenda', true);
   renderizarProgressoConquistas();
   renderizarHabitos('listaHabitosProgresso', 'habitosProgressoVazio', false);
+  renderizarProgressoDia();
   if ($('diaDialog').open && diaDialogAtual) abrirDiaDialog(diaDialogAtual);
 }
 
@@ -618,6 +618,29 @@ function categoriasDoDia(dataStr) {
   return [...cores];
 }
 
+function montarCalendarioMini() {
+  const el = $('miniCalendario'); if (!el) return;
+  el.innerHTML = '';
+  const hoje = new Date();
+  const cab = document.createElement('div'); cab.className = 'mini-cal-cab';
+  cab.innerHTML = '<span></span>';
+  cab.querySelector('span').textContent = hoje.toLocaleDateString('pt-BR', { month: 'short' });
+  el.appendChild(cab);
+  const grade = document.createElement('div'); grade.className = 'mini-cal-grade';
+  const ano = hoje.getFullYear(), mes = hoje.getMonth();
+  const primeiro = new Date(ano, mes, 1);
+  const diasNoMes = new Date(ano, mes + 1, 0).getDate();
+  for (let i = 0; i < primeiro.getDay(); i++) grade.appendChild(document.createElement('span'));
+  for (let d = 1; d <= diasNoMes; d++) {
+    const dataStr = dataISO(new Date(ano, mes, d));
+    const span = document.createElement('span');
+    span.className = 'dia' + (dataStr === hojeISO() ? ' hoje' : '') + (diaTemAgenda(dataStr) ? ' tem-item' : '');
+    span.textContent = d;
+    grade.appendChild(span);
+  }
+  el.appendChild(grade);
+}
+
 function montarCabecalhoSemana(el) {
   const linha = document.createElement('div');
   linha.className = 'cal-semana';
@@ -795,6 +818,25 @@ $('itemForm').addEventListener('submit', async e => {
   await updateDoc(doc(db, 'usuarios', uid), { itens });
   itemEmEdicao = null;
 });
+
+// ---------- Progresso (dia / semana / mês) ----------
+document.querySelectorAll('#progressoSeletor .escala-btn').forEach(btn => {
+  btn.addEventListener('click', () => {
+    document.querySelectorAll('#progressoSeletor .escala-btn').forEach(b => b.setAttribute('aria-pressed', 'false'));
+    btn.setAttribute('aria-pressed', 'true');
+    ['progressoDia', 'progressoSemana', 'progressoMes'].forEach(id => {
+      $(id).hidden = id !== 'progresso' + btn.dataset.alvo.charAt(0).toUpperCase() + btn.dataset.alvo.slice(1);
+    });
+  });
+});
+
+function renderizarProgressoDia() {
+  const hoje = hojeISO();
+  const itens = itensConcluiveisDoDia(hoje).sort((a, b) => (a.horario || '').localeCompare(b.horario || ''));
+  const ul = $('listaProgressoDia'); ul.innerHTML = '';
+  itens.forEach(item => ul.appendChild(criarLinhaItem(item, { data: hoje })));
+  $('progressoDiaVazio').hidden = itens.length > 0;
+}
 
 // ---------- Progresso (mês) ----------
 function renderizarProgressoConquistas() {

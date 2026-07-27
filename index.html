@@ -8,7 +8,7 @@
 <link rel="manifest" href="./manifest.webmanifest">
 <link rel="icon" href="./icon-192.png">
 <link rel="apple-touch-icon" href="./icon-192.png">
-<link rel="stylesheet" href="./styles.css?v=8">
+<link rel="stylesheet" href="./styles.css?v=10">
 </head>
 <body>
 
@@ -65,15 +65,15 @@
 
 <div id="loginScreen" class="tela tela-login">
   <div class="login-card">
+    <div class="mascote-login">
+      <svg class="mascote-icone"><use href="#i-mascote"/></svg>
+      <p>Uma coisa de cada vez.</p>
+    </div>
     <div class="cab-marca" style="justify-content:center;margin-bottom:6px;"><svg><use href="#i-gato"/></svg><span>Rotina</span></div>
     <h1 class="marca">Um passo de cada vez</h1>
     <p class="subtitulo">Seu painel do dia, sem cobrança.</p>
     <button id="loginBtn" class="botao botao-primario">Entrar com Google</button>
     <p id="loginStatus" class="texto-status"></p>
-    <div class="mascote-fala">
-      <svg class="mascote-icone"><use href="#i-mascote"/></svg>
-      <p>Uma coisa de cada vez.</p>
-    </div>
   </div>
 </div>
 
@@ -86,6 +86,7 @@
       <p class="cab-data" id="dataHoje"></p>
     </div>
     <div class="cab-widgets">
+      <div class="cab-item mini-cal" id="miniCalendario"></div>
       <div class="cab-item progresso-anel">
         <div class="anel" id="anelProgresso" style="--pct:0"></div>
         <div class="progresso-texto"><strong id="progressoTexto">0/0</strong><span>feitas hoje</span></div>
@@ -160,17 +161,6 @@
         <p id="agendaVazio" class="bloco-sub" hidden>Nenhum compromisso marcado pra hoje.</p>
       </article>
 
-      <article class="bloco" data-cor="ceu" data-id="calendario" draggable="true">
-        <div class="bloco-cab">
-          <div class="bloco-titulo-grupo"><span class="bloco-icone"><svg><use href="#i-calendario"/></svg></span><span class="bloco-titulo">Calendário</span></div>
-          <button class="arrastar-alca" aria-label="Reordenar bloco Calendário" tabindex="0"><svg><use href="#i-alca"/></svg></button>
-        </div>
-        <details class="cal-expansivel" open>
-          <summary>Ver mês <svg><use href="#i-seta-dir"/></svg></summary>
-          <div id="painelCal" class="cal-painel"></div>
-        </details>
-      </article>
-
       <article class="bloco" data-cor="lilas" data-id="tarefas" draggable="true">
         <div class="bloco-cab">
           <div class="bloco-titulo-grupo"><span class="bloco-icone"><svg><use href="#i-lista"/></svg></span><span class="bloco-titulo">Tarefas</span></div>
@@ -178,6 +168,25 @@
         </div>
         <ul id="listaTarefas" class="lista-itens"></ul>
         <p id="tarefasVazio" class="bloco-sub" hidden>Nenhuma tarefa pra hoje ainda.</p>
+      </article>
+
+      <article class="bloco" data-cor="areia" data-id="depois" draggable="true">
+        <div class="bloco-cab">
+          <div class="bloco-titulo-grupo"><span class="bloco-icone"><svg><use href="#i-bandeja"/></svg></span><span class="bloco-titulo">Fazer depois</span></div>
+          <button class="botao-icone-destaque" id="addDepoisBtn" aria-label="Novo item pra depois" type="button"><svg><use href="#i-mais"/></svg></button>
+        </div>
+        <p class="bloco-sub" style="margin-bottom:10px;">Sem pressa — fica guardado aqui até você ter espaço.</p>
+        <div id="listaDepois" class="chips"></div>
+        <p id="depoisVazio" class="bloco-sub" hidden>Nada guardado pra depois agora.</p>
+      </article>
+
+      <article class="bloco" data-cor="lilas" data-id="mente" draggable="true">
+        <div class="bloco-cab">
+          <div class="bloco-titulo-grupo"><span class="bloco-icone"><svg><use href="#i-nuvem"/></svg></span><span class="bloco-titulo">Descarregar a mente</span></div>
+          <button class="arrastar-alca" aria-label="Reordenar bloco Descarregar a mente" tabindex="0"><svg><use href="#i-alca"/></svg></button>
+        </div>
+        <textarea class="mente-area" id="menteTexto" placeholder="O que está passando pela cabeça agora? Pode escrever sem se preocupar em organizar."></textarea>
+        <p class="mente-legenda">Fica só aqui, salvo automaticamente.</p>
       </article>
 
       <article class="bloco" data-cor="menta" data-id="autocuidado" draggable="true">
@@ -244,26 +253,7 @@
         </div>
       </article>
 
-      <article class="bloco bloco--maior" data-cor="lilas" data-id="mente" draggable="true">
-        <div class="bloco-cab">
-          <div class="bloco-titulo-grupo"><span class="bloco-icone"><svg><use href="#i-nuvem"/></svg></span><span class="bloco-titulo">Tira isso da cabeça</span></div>
-          <button class="arrastar-alca" aria-label="Reordenar bloco Tira isso da cabeça" tabindex="0"><svg><use href="#i-alca"/></svg></button>
-        </div>
-        <textarea class="mente-area" id="menteTexto" placeholder="O que está passando pela cabeça agora? Pode escrever sem se preocupar em organizar."></textarea>
-        <p class="mente-legenda">Fica só aqui, salvo automaticamente.</p>
-      </article>
-
-      <article class="bloco bloco--maior" data-cor="areia" data-id="depois" draggable="true">
-        <div class="bloco-cab">
-          <div class="bloco-titulo-grupo"><span class="bloco-icone"><svg><use href="#i-bandeja"/></svg></span><span class="bloco-titulo">Pode esperar</span></div>
-          <button class="botao-icone-destaque" id="addDepoisBtn" aria-label="Novo item pra depois" type="button"><svg><use href="#i-mais"/></svg></button>
-        </div>
-        <p class="bloco-sub" style="margin-bottom:10px;">Sem pressa — fica guardado aqui até você ter espaço.</p>
-        <div id="listaDepois" class="chips"></div>
-        <p id="depoisVazio" class="bloco-sub" hidden>Nada guardado pra depois agora.</p>
-      </article>
-
-      <article class="bloco bloco--maior" data-cor="areia" data-id="lembrar" draggable="true">
+      <article class="bloco" data-cor="areia" data-id="lembrar" draggable="true">
         <div class="bloco-cab">
           <div class="bloco-titulo-grupo"><span class="bloco-icone"><svg><use href="#i-pin"/></svg></span><span class="bloco-titulo">Não esquecer</span></div>
           <button class="arrastar-alca" aria-label="Reordenar bloco Não esquecer" tabindex="0"><svg><use href="#i-alca"/></svg></button>
@@ -275,10 +265,10 @@
         </form>
       </article>
 
-      <article class="bloco bloco--maior" data-cor="dourado" data-id="conquistas" draggable="true">
+      <article class="bloco" data-cor="dourado" data-id="conquistas" draggable="true">
         <div class="bloco-cab">
-          <div class="bloco-titulo-grupo"><span class="bloco-icone"><svg><use href="#i-pata"/></svg></span><span class="bloco-titulo">Olha o que eu consegui</span></div>
-          <button class="arrastar-alca" aria-label="Reordenar bloco Olha o que eu consegui" tabindex="0"><svg><use href="#i-alca"/></svg></button>
+          <div class="bloco-titulo-grupo"><span class="bloco-icone"><svg><use href="#i-pata"/></svg></span><span class="bloco-titulo">Conquistas do dia</span></div>
+          <button class="arrastar-alca" aria-label="Reordenar bloco Conquistas do dia" tabindex="0"><svg><use href="#i-alca"/></svg></button>
         </div>
         <div class="medalhas" id="medalhas"></div>
         <div id="conquistasVazio" class="mascote-fala" hidden>
@@ -312,7 +302,7 @@
   <!-- ===================== CALENDÁRIO ===================== -->
   <div class="vista" id="vistaCalendario" role="tabpanel" hidden>
     <div class="tela-simples">
-      <div class="tela-cab"><h2 class="tela-titulo" id="calGrandeTitulo">Mês</h2></div>
+      <div class="tela-cab"><h2 class="tela-titulo">Calendário</h2></div>
       <div class="cartao-simples"><div class="cal-grande" id="calGrande"></div></div>
     </div>
   </div>
@@ -321,15 +311,24 @@
   <div class="vista" id="vistaProgresso" role="tabpanel" hidden>
     <div class="tela-simples">
       <div class="tela-cab"><h2 class="tela-titulo">Progresso</h2></div>
-      <div class="cartao-simples">
-        <p class="bloco-sub" style="margin:0 0 10px;">Este mês</p>
-        <div class="cal-grande" id="progMesCalendario"></div>
-        <div class="medalhas" id="progMesConquistas" style="margin-top:14px;"></div>
+      <div class="escala-opcoes" id="progressoSeletor" role="tablist" aria-label="Ver progresso por">
+        <button class="escala-btn" data-alvo="dia" aria-pressed="true" type="button"><span>Dia</span></button>
+        <button class="escala-btn" data-alvo="semana" aria-pressed="false" type="button"><span>Semana</span></button>
+        <button class="escala-btn" data-alvo="mes" aria-pressed="false" type="button"><span>Mês</span></button>
       </div>
-      <div class="cartao-simples">
+      <div class="cartao-simples" id="progressoDia">
+        <p class="bloco-sub" style="margin:0 0 10px;">Hoje</p>
+        <ul id="listaProgressoDia" class="lista-itens"></ul>
+        <p id="progressoDiaVazio" class="bloco-sub" hidden>Nada marcável hoje ainda.</p>
+      </div>
+      <div class="cartao-simples" id="progressoSemana" hidden>
         <p class="bloco-sub" style="margin:0 0 10px;">Hábitos da semana</p>
         <div id="listaHabitosProgresso"></div>
         <p id="habitosProgressoVazio" class="bloco-sub" hidden>Cadastre um hábito na aba Rotina pra acompanhar aqui.</p>
+      </div>
+      <div class="cartao-simples" id="progressoMes" hidden>
+        <p class="bloco-sub" style="margin:0 0 10px;">Conquistas do mês</p>
+        <div class="medalhas" id="progMesConquistas"></div>
       </div>
     </div>
   </div>

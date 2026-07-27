@@ -108,10 +108,18 @@ button{ font-family:inherit; cursor:pointer; }
 .texto-status{ margin-top:14px; font-size:.85rem; color:var(--tinta-suave); min-height:1.2em; }
 
 /* ---------- Mascote ---------- */
-.mascote-fala{ display:flex; align-items:center; gap:10px; text-align:left; }
-.mascote-icone{ width:2.6em; height:2.9em; flex:0 0 auto; }
-.mascote-fala p{ margin:0; font-size:.82rem; color:var(--tinta-suave); font-style:italic; }
-.login-card .mascote-fala{ margin-top:26px; justify-content:center; }
+.mascote-fala{
+  display:flex; align-items:center; gap:12px; text-align:left; margin-top:14px;
+  background:var(--lilas-fundo); border-radius:var(--raio-lg); padding:12px 14px;
+}
+.mascote-icone{ width:3.2em; height:3.6em; flex:0 0 auto; }
+.mascote-fala p{ margin:0; font-size:.82rem; color:var(--lilas-tinta); font-weight:600; }
+
+.mascote-login{
+  display:flex; flex-direction:column; align-items:center; gap:8px; margin:0 auto 18px;
+}
+.mascote-login .mascote-icone{ width:4.6em; height:5.1em; }
+.mascote-login p{ margin:0; font-size:.85rem; color:var(--tinta-suave); font-weight:600; text-align:center; }
 
 /* ---------- Botões ---------- */
 .botao{
@@ -154,6 +162,18 @@ button{ font-family:inherit; cursor:pointer; }
 .progresso-texto{ display:flex; flex-direction:column; line-height:1.15; }
 .progresso-texto strong{ font-size:.95rem; }
 .progresso-texto span{ font-size:.72rem; color:var(--tinta-suave); }
+
+.mini-cal{ padding:9px 11px 10px; }
+.mini-cal-cab{ display:flex; align-items:center; justify-content:space-between; gap:6px; margin-bottom:6px; }
+.mini-cal-cab span{ font-size:.72rem; font-weight:700; text-transform:capitalize; color:var(--tinta-suave); }
+.mini-cal-grade{ display:grid; grid-template-columns:repeat(7,14px); gap:3px; }
+.mini-cal-grade .dia{
+  width:14px; height:14px; min-width:0; min-height:0; aspect-ratio:auto; border-radius:5px; font-size:.55rem; display:flex; align-items:center; justify-content:center;
+  color:var(--tinta-suave); background:none;
+}
+.mini-cal-grade .dia.hoje{ background:var(--lilas-tinta); color:#fff; font-weight:700; }
+.mini-cal-grade .dia.tem-item:not(.hoje){ box-shadow:inset 0 -2.5px 0 var(--ceu-tinta); }
+
 /* ---------- Menu de conta (avatar) ---------- */
 .conta-area{ position:relative; }
 .conta-avatar{
@@ -239,26 +259,6 @@ button{ font-family:inherit; cursor:pointer; }
 @media (max-width:759px) and (min-width:560px){ .painel{ columns:2 16rem; } }
 @media (max-width:559px){ .painel{ columns:1; } }
 
-/* Desktop: três colunas com agrupamento por assunto (esquerda/central mais larga/direita) */
-@media (min-width:1080px){
-  .painel{ display:grid; grid-template-columns:1fr 1.3fr 1fr; grid-auto-flow:row; gap:1rem; }
-  .bloco{ break-inside:auto; margin:0; }
-  .bloco[data-id="foco"]{ grid-column:1; order:1; }
-  .bloco[data-id="prioridades"]{ grid-column:1; order:2; }
-  .bloco[data-id="tarefas"]{ grid-column:1; order:3; }
-  .bloco[data-id="agenda"]{ grid-column:2; order:1; }
-  .bloco[data-id="calendario"]{ grid-column:3; order:1; }
-  .bloco[data-id="humor"]{ grid-column:3; order:2; }
-  .bloco[data-id="agua"]{ grid-column:3; order:3; }
-  .bloco[data-id="refeicoes"]{ grid-column:3; order:4; }
-  .bloco[data-id="habitos"]{ grid-column:3; order:5; }
-  .bloco[data-id="autocuidado"]{ grid-column:3; order:6; }
-  .bloco--maior{ grid-column:1 / -1; }
-  .bloco[data-id="mente"]{ order:10; }
-  .bloco[data-id="depois"]{ order:11; }
-  .bloco[data-id="lembrar"]{ order:12; }
-  .bloco[data-id="conquistas"]{ order:13; }
-}
 
 .bloco{
   break-inside:avoid; margin:0 0 1rem; background:var(--cor-fundo, var(--superficie));
