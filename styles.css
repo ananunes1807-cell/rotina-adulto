@@ -318,7 +318,7 @@ button{ font-family:inherit; cursor:pointer; }
 
 .arrastar-alca{
   background:none; border:none; color:var(--tinta-suave); opacity:.55; width:1.7rem; height:1.7rem; min-width:28px; min-height:28px;
-  border-radius:8px; display:flex; align-items:center; justify-content:center; flex:0 0 auto; cursor:grab;
+  border-radius:8px; display:flex; align-items:center; justify-content:center; flex:0 0 auto; cursor:grab; touch-action:none;
 }
 .arrastar-alca:hover{ opacity:1; background:rgba(255,255,255,.5); }
 .arrastar-alca svg{ width:1em; height:1em; }

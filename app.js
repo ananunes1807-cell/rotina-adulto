@@ -1157,7 +1157,7 @@ function garantirControlesEdicao(el, id) {
 
 function criarBlocoPersonalizado(entry) {
   const el = document.createElement('article');
-  el.className = 'bloco'; el.draggable = true; el.dataset.id = entry.id;
+  el.className = 'bloco'; el.dataset.id = entry.id;
   el.innerHTML = `
     <div class="bloco-cab">
       <div class="bloco-titulo-grupo">
@@ -1418,31 +1418,47 @@ $('campoNaoPerturbeFim').addEventListener('change', () => {
   salvarPrefsVoz({ naoPerturbe: { ...prefsVoz().naoPerturbe, fim: $('campoNaoPerturbeFim').value } });
 });
 
-// ---------- Reordenar blocos (arrastar + teclado, só no modo personalizar) ----------
+// ---------- Reordenar blocos (arrastar por toque/mouse/caneta + teclado, só no modo personalizar) ----------
+// Pointer Events em vez de Drag and Drop nativo: o HTML5 dragstart/dragover só
+// dispara de verdade com mouse — no toque (celular) ele simplesmente não funciona.
+// Pointer Events unificam mouse, dedo e caneta no mesmo código.
 (function ligarReordenacao() {
   const painel = $('painel');
   let arrastando = null;
 
-  painel.addEventListener('dragstart', e => {
-    if (!modoPersonalizar) { e.preventDefault(); return; }
-    const bloco = e.target.closest('.bloco');
-    if (!bloco) return;
-    arrastando = bloco;
-    bloco.classList.add('arrastando');
-  });
-  painel.addEventListener('dragend', e => {
-    const bloco = e.target.closest('.bloco');
-    if (bloco) bloco.classList.remove('arrastando');
-    if (arrastando) { arrastando = null; salvarOrdemBlocos(); }
-  });
-  painel.addEventListener('dragover', e => {
-    const bloco = e.target.closest('.bloco');
-    if (!arrastando || !bloco || bloco === arrastando) return;
-    e.preventDefault();
+  function moverParaPosicao(clientX, clientY) {
+    const alvo = document.elementFromPoint(clientX, clientY);
+    const bloco = alvo && alvo.closest('.bloco');
+    if (!bloco || bloco === arrastando || !painel.contains(bloco)) return;
     const filhos = [...painel.children];
     const depois = filhos.indexOf(bloco) > filhos.indexOf(arrastando);
     painel.insertBefore(arrastando, depois ? bloco.nextSibling : bloco);
+  }
+
+  painel.addEventListener('pointerdown', e => {
+    const alca = e.target.closest('.arrastar-alca');
+    if (!alca || !modoPersonalizar) return;
+    const bloco = alca.closest('.bloco');
+    if (!bloco) return;
+    e.preventDefault();
+    arrastando = bloco;
+    bloco.classList.add('arrastando');
+    alca.setPointerCapture(e.pointerId);
   });
+  painel.addEventListener('pointermove', e => {
+    if (!arrastando) return;
+    moverParaPosicao(e.clientX, e.clientY);
+  });
+  function soltarArraste(e) {
+    if (!arrastando) return;
+    arrastando.classList.remove('arrastando');
+    arrastando = null;
+    salvarOrdemBlocos();
+    const alca = e.target.closest('.arrastar-alca');
+    if (alca && alca.hasPointerCapture(e.pointerId)) alca.releasePointerCapture(e.pointerId);
+  }
+  painel.addEventListener('pointerup', soltarArraste);
+  painel.addEventListener('pointercancel', soltarArraste);
   painel.addEventListener('keydown', e => {
     const alca = e.target.closest('.arrastar-alca');
     if (!alca || !modoPersonalizar) return;
