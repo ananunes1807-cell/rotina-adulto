@@ -1,7 +1,7 @@
-const CACHE_NAME = 'rotina-adulto-v12';
+const CACHE_NAME = 'rotina-adulto-v13';
 const FILES = [
   './index.html',
-  './styles.css?v=13',
+  './styles.css?v=14',
   './app.js',
   './manifest.webmanifest',
   './icon-192.png',
