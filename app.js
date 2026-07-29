@@ -52,7 +52,7 @@ const ICONES_ESCOLHA_BLOCO = ['i-alvo','i-bandeira','i-relogio','i-lista','i-ban
 const CORES_ESCOLHA_BLOCO = ['rosa','lilas','ceu','menta','pessego','areia','dourado'];
 function painelPadrao() {
   return Object.keys(BLOCOS_SISTEMA).map(id => ({
-    id, tipo: 'sistema', oculto: false, largura: 'normal', cor: null, icone: null, titulo: null
+    id, tipo: 'sistema', oculto: false, cor: null, icone: null, titulo: null
   }));
 }
 
@@ -1117,12 +1117,134 @@ function resolverAparenciaBloco(entry) {
     cor: entry.cor || (padrao ? padrao.cor : 'lilas')
   };
 }
+function blocosAtuais() {
+  return (dadosUsuario.painel && dadosUsuario.painel.blocos && dadosUsuario.painel.blocos.length)
+    ? dadosUsuario.painel.blocos : painelPadrao();
+}
 function encontrarBloco(id) {
-  return ((dadosUsuario.painel && dadosUsuario.painel.blocos) || []).find(b => b.id === id);
+  return blocosAtuais().find(b => b.id === id);
 }
 function atualizarBloco(id, mudancas) {
-  const blocos = ((dadosUsuario.painel && dadosUsuario.painel.blocos) || []).map(b => b.id === id ? { ...b, ...mudancas } : b);
+  const blocos = blocosAtuais().map(b => b.id === id ? { ...b, ...mudancas } : b);
   return updateDoc(doc(db, 'usuarios', uid), { painel: { blocos } });
+}
+function tituloDoId(id) {
+  const bloco = encontrarBloco(id);
+  return bloco ? resolverAparenciaBloco(bloco).titulo : 'Card';
+}
+function anunciar(texto) {
+  const el = $('anuncioPainel');
+  if (el) el.textContent = texto;
+}
+
+// ---------- Layout do painel: coluna/largura/ordem separados por dispositivo ----------
+// O conteúdo do card (dadosUsuario.painel.blocos) é uma coisa; ONDE ele fica na
+// tela é outra, guardada à parte em layoutDesktop/layoutMobile (a ordem no
+// array = a ordem visual). Isso permite o celular ter uma organização
+// diferente do computador sem duplicar título/cor/itens em dois lugares.
+function ehTelaMobile() { return window.matchMedia('(max-width:759px)').matches; }
+
+function layoutDesktopAtual() {
+  const blocos = blocosAtuais();
+  const salvo = (dadosUsuario.painel && dadosUsuario.painel.layoutDesktop) || [];
+  const validos = salvo.filter(l => blocos.some(b => b.id === l.id));
+  const idsVistos = new Set(validos.map(l => l.id));
+  // cards novos (usuária nova, ou card criado numa atualização futura) entram
+  // no fim, preenchendo as 3 colunas em sequência — nunca embaralha o que já
+  // foi salvo antes.
+  let colAtual = 1;
+  const novos = blocos.filter(b => !idsVistos.has(b.id)).map(b => {
+    const largura = b.id === 'foco' && !salvo.length ? 3 : (b.largura === 'larga' ? 2 : 1);
+    if (colAtual + largura - 1 > 3) colAtual = 1;
+    const entrada = { id: b.id, coluna: colAtual, largura };
+    colAtual += largura; if (colAtual > 3) colAtual = 1;
+    return entrada;
+  });
+  return [...validos, ...novos];
+}
+function layoutMobileAtual() {
+  const blocos = blocosAtuais();
+  const salvo = (dadosUsuario.painel && dadosUsuario.painel.layoutMobile) || [];
+  const validos = salvo.filter(l => blocos.some(b => b.id === l.id));
+  const idsVistos = new Set(validos.map(l => l.id));
+  const novos = blocos.filter(b => !idsVistos.has(b.id)).map(b => ({ id: b.id }));
+  return [...validos, ...novos];
+}
+function nomeLayoutAtivo() { return ehTelaMobile() ? 'layoutMobile' : 'layoutDesktop'; }
+function layoutAtivo(nome) { return (nome || nomeLayoutAtivo()) === 'layoutMobile' ? layoutMobileAtual() : layoutDesktopAtual(); }
+function salvarLayout(nome, entradas) {
+  return updateDoc(doc(db, 'usuarios', uid), { painel: { [nome]: entradas } });
+}
+
+// ---------- Animação suave de reordenação (técnica FLIP: mede antes/depois e anima a diferença) ----------
+function capturarRetangulos(painel) {
+  const mapa = new Map();
+  [...painel.children].forEach(el => mapa.set(el, el.getBoundingClientRect()));
+  return mapa;
+}
+function animarReflow(painel, antes, excluir) {
+  [...painel.children].forEach(el => {
+    if (el === excluir) return;
+    const rectAntes = antes.get(el);
+    if (!rectAntes) return;
+    const rectDepois = el.getBoundingClientRect();
+    const dx = rectAntes.left - rectDepois.left;
+    const dy = rectAntes.top - rectDepois.top;
+    if (Math.abs(dx) < 1 && Math.abs(dy) < 1) return;
+    el.style.transition = 'none';
+    el.style.transform = `translate(${dx}px, ${dy}px)`;
+    el.getBoundingClientRect(); // força o navegador a aplicar antes de animar
+    requestAnimationFrame(() => {
+      el.style.transition = 'transform .2s ease';
+      el.style.transform = '';
+    });
+  });
+}
+function legendaPosicao(indice, total) {
+  if (indice === 0) return 'a primeira posição';
+  if (indice === total - 1) return 'a última posição';
+  return `a posição ${indice + 1}`;
+}
+
+// Atualiza o layout na memória local (pra re-renderizar já, animado, sem
+// esperar a viagem de ida e volta do Firestore) e manda salvar em paralelo.
+function aplicarLayoutLocal(nome, entradas) {
+  dadosUsuario.painel = { ...(dadosUsuario.painel || {}), [nome]: entradas };
+  aplicarPersonalizacaoPainel();
+  salvarLayout(nome, entradas);
+}
+
+function moverBlocoOrdem(id, delta) {
+  const nome = nomeLayoutAtivo();
+  const entradas = layoutAtivo(nome);
+  const i = entradas.findIndex(e => e.id === id);
+  const j = i + delta;
+  if (i < 0 || j < 0 || j >= entradas.length) return;
+  const [item] = entradas.splice(i, 1);
+  entradas.splice(j, 0, item);
+  aplicarLayoutLocal(nome, entradas);
+  anunciar(`Card ${tituloDoId(id)} movido para ${legendaPosicao(j, entradas.length)}.`);
+}
+function moverBlocoColuna(id, delta) {
+  const entradas = layoutDesktopAtual();
+  const entrada = entradas.find(e => e.id === id);
+  if (!entrada) return;
+  const largura = entrada.largura || 1;
+  const alvo = Math.min(4 - largura, Math.max(1, entrada.coluna + delta));
+  if (alvo === entrada.coluna) return;
+  entrada.coluna = alvo;
+  aplicarLayoutLocal('layoutDesktop', entradas);
+  anunciar(`Card ${tituloDoId(id)} movido para a coluna ${alvo}.`);
+}
+function alterarLarguraBloco(id, novaLargura) {
+  const entradas = layoutDesktopAtual();
+  const entrada = entradas.find(e => e.id === id);
+  if (!entrada) return;
+  entrada.largura = novaLargura;
+  if (entrada.coluna + novaLargura - 1 > 3) entrada.coluna = 4 - novaLargura;
+  aplicarLayoutLocal('layoutDesktop', entradas);
+  const legendas = { 1: '1 coluna', 2: '2 colunas', 3: 'largura total' };
+  anunciar(`Card ${tituloDoId(id)} agora ocupa ${legendas[novaLargura]}.`);
 }
 
 function garantirControlesEdicao(el, id) {
@@ -1138,12 +1260,28 @@ function garantirControlesEdicao(el, id) {
     });
     cab.appendChild(controles);
   }
+  if (!controles.querySelector('.bloco-mover-cima')) {
+    const cima = document.createElement('button');
+    cima.type = 'button'; cima.className = 'bloco-mover-btn bloco-mover-cima';
+    cima.setAttribute('aria-label', 'Mover card para cima');
+    cima.innerHTML = '<svg class="girar-cima"><use href="#i-seta-dir"/></svg>';
+    cima.addEventListener('click', () => moverBlocoOrdem(id, -1));
+    controles.insertBefore(cima, controles.firstChild);
+  }
   if (!controles.querySelector('.arrastar-alca')) {
     const alca = document.createElement('button');
     alca.type = 'button'; alca.className = 'arrastar-alca'; alca.tabIndex = 0;
-    alca.setAttribute('aria-label', 'Reordenar bloco');
+    alca.setAttribute('aria-label', 'Reordenar card ' + resolverAparenciaBloco(encontrarBloco(id) || {}).titulo);
     alca.innerHTML = '<svg><use href="#i-alca"/></svg>';
-    controles.insertBefore(alca, controles.firstChild);
+    controles.insertBefore(alca, controles.querySelector('.bloco-mover-cima').nextSibling);
+  }
+  if (!controles.querySelector('.bloco-mover-baixo')) {
+    const baixo = document.createElement('button');
+    baixo.type = 'button'; baixo.className = 'bloco-mover-btn bloco-mover-baixo';
+    baixo.setAttribute('aria-label', 'Mover card para baixo');
+    baixo.innerHTML = '<svg class="girar-baixo"><use href="#i-seta-dir"/></svg>';
+    baixo.addEventListener('click', () => moverBlocoOrdem(id, 1));
+    controles.insertBefore(baixo, controles.querySelector('.arrastar-alca').nextSibling);
   }
   if (!controles.querySelector('.bloco-opcoes-btn')) {
     const opcoes = document.createElement('button');
@@ -1229,10 +1367,14 @@ async function excluirItemPersonalizado(id, itemId) {
 
 function aplicarPersonalizacaoPainel() {
   const painel = $('painel');
-  const blocos = (dadosUsuario.painel && dadosUsuario.painel.blocos && dadosUsuario.painel.blocos.length)
-    ? dadosUsuario.painel.blocos : painelPadrao();
+  const blocos = blocosAtuais();
+  const mobile = ehTelaMobile();
+  const layout = mobile ? layoutMobileAtual() : layoutDesktopAtual();
+  const antes = capturarRetangulos(painel);
   const idsVistos = new Set();
-  blocos.forEach(entry => {
+  layout.forEach(entrada => {
+    const entry = blocos.find(b => b.id === entrada.id);
+    if (!entry) return;
     idsVistos.add(entry.id);
     let el = [...painel.children].find(c => c.dataset.id === entry.id);
     if (!el) {
@@ -1241,7 +1383,16 @@ function aplicarPersonalizacaoPainel() {
     }
     painel.appendChild(el);
     el.hidden = !!entry.oculto;
-    el.classList.toggle('bloco--larga', entry.largura === 'larga');
+    if (mobile) {
+      el.style.gridColumn = '';
+      delete el.dataset.coluna; delete el.dataset.largura;
+    } else {
+      const largura = Math.min(entrada.largura || 1, 3);
+      const coluna = Math.min(entrada.coluna || 1, 4 - largura);
+      el.style.gridColumn = coluna + ' / span ' + largura;
+      el.dataset.coluna = String(coluna);
+      el.dataset.largura = String(largura);
+    }
     const aparencia = resolverAparenciaBloco(entry);
     el.dataset.cor = aparencia.cor;
     const iconeUse = el.querySelector('.bloco-icone svg use');
@@ -1255,6 +1406,7 @@ function aplicarPersonalizacaoPainel() {
     if (!idsVistos.has(el.dataset.id)) el.remove();
   });
   painel.classList.toggle('modo-personalizar', modoPersonalizar);
+  animarReflow(painel, antes);
   renderizarCardsOcultos(blocos);
 }
 
@@ -1274,6 +1426,14 @@ function renderizarCardsOcultos(blocos) {
   });
 }
 
+// Celular e computador têm layouts salvos separados — ao cruzar o breakpoint
+// (girar o aparelho, redimensionar a janela) precisa re-renderizar com o layout certo.
+(function observarMudancaDeTelaDoPainel() {
+  const mq = window.matchMedia('(max-width:759px)');
+  const ouvir = () => { if (dadosUsuario) aplicarPersonalizacaoPainel(); };
+  if (mq.addEventListener) mq.addEventListener('change', ouvir); else mq.addListener(ouvir);
+})();
+
 // ---------- Diálogo de opções do card ----------
 $('iconeEscolhaBloco').innerHTML = ICONES_ESCOLHA_BLOCO
   .map(ic => `<label><input type="radio" name="iconeBloco" value="${ic}"><svg><use href="#${ic}"/></svg></label>`)
@@ -1289,7 +1449,12 @@ function abrirEdicaoBloco(id) {
   $('campoBlocoTitulo').placeholder = aparencia.titulo;
   document.querySelectorAll('#corEscolha input').forEach(i => { i.checked = i.value === aparencia.cor; });
   document.querySelectorAll('#iconeEscolhaBloco input').forEach(i => { i.checked = i.value === aparencia.icone; });
-  $('campoBlocoLarga').checked = bloco.largura === 'larga';
+  const mobile = ehTelaMobile();
+  $('blocoDesktopFieldset').hidden = mobile;
+  if (!mobile) {
+    const entradaDesktop = layoutDesktopAtual().find(e => e.id === id);
+    $('campoBlocoLargura').value = String((entradaDesktop && entradaDesktop.largura) || 1);
+  }
   $('excluirBlocoBtn').hidden = bloco.tipo !== 'personalizado';
   $('ocultarBlocoBtn').innerHTML = bloco.oculto
     ? '<svg><use href="#i-olho"/></svg> Mostrar'
@@ -1302,11 +1467,20 @@ $('blocoForm').addEventListener('submit', async () => {
   const titulo = $('campoBlocoTitulo').value.trim();
   const cor = document.querySelector('#corEscolha input:checked')?.value || null;
   const icone = document.querySelector('#iconeEscolhaBloco input:checked')?.value || null;
-  const largura = $('campoBlocoLarga').checked ? 'larga' : 'normal';
-  await atualizarBloco(blocoEmEdicao.id, { titulo: titulo || null, cor, icone, largura });
+  await atualizarBloco(blocoEmEdicao.id, { titulo: titulo || null, cor, icone });
+  if (!ehTelaMobile()) {
+    const novaLargura = Number($('campoBlocoLargura').value) || 1;
+    const entradaAtual = layoutDesktopAtual().find(e => e.id === blocoEmEdicao.id);
+    if (!entradaAtual || entradaAtual.largura !== novaLargura) alterarLarguraBloco(blocoEmEdicao.id, novaLargura);
+  }
   blocoEmEdicao = null;
 });
 $('fecharBlocoDialog').addEventListener('click', () => { $('blocoDialog').close(); blocoEmEdicao = null; });
+
+$('blocoMoverCimaBtn').addEventListener('click', () => { if (blocoEmEdicao) moverBlocoOrdem(blocoEmEdicao.id, -1); });
+$('blocoMoverBaixoBtn').addEventListener('click', () => { if (blocoEmEdicao) moverBlocoOrdem(blocoEmEdicao.id, 1); });
+$('blocoColunaAntesBtn').addEventListener('click', () => { if (blocoEmEdicao) moverBlocoColuna(blocoEmEdicao.id, -1); });
+$('blocoColunaDepoisBtn').addEventListener('click', () => { if (blocoEmEdicao) moverBlocoColuna(blocoEmEdicao.id, 1); });
 
 $('ocultarBlocoBtn').addEventListener('click', async () => {
   if (!blocoEmEdicao) return;
@@ -1320,11 +1494,11 @@ $('duplicarBlocoBtn').addEventListener('click', async () => {
   const aparencia = resolverAparenciaBloco(blocoEmEdicao);
   const novo = {
     id: 'custom-' + crypto.randomUUID(), tipo: 'personalizado', oculto: false,
-    largura: blocoEmEdicao.largura || 'normal', cor: aparencia.cor, icone: aparencia.icone,
+    cor: aparencia.cor, icone: aparencia.icone,
     titulo: aparencia.titulo + ' (cópia)',
     itens: blocoEmEdicao.tipo === 'personalizado' ? (blocoEmEdicao.itens || []).map(i => ({ ...i, id: crypto.randomUUID() })) : []
   };
-  const blocos = [...((dadosUsuario.painel && dadosUsuario.painel.blocos) || []), novo];
+  const blocos = [...blocosAtuais(), novo];
   await updateDoc(doc(db, 'usuarios', uid), { painel: { blocos } });
   $('blocoDialog').close();
   blocoEmEdicao = null;
@@ -1333,7 +1507,7 @@ $('duplicarBlocoBtn').addEventListener('click', async () => {
 $('excluirBlocoBtn').addEventListener('click', async () => {
   if (!blocoEmEdicao || blocoEmEdicao.tipo !== 'personalizado') return;
   if (!confirm('Excluir este card personalizado? Essa ação não pode ser desfeita.')) return;
-  const blocos = ((dadosUsuario.painel && dadosUsuario.painel.blocos) || []).filter(b => b.id !== blocoEmEdicao.id);
+  const blocos = blocosAtuais().filter(b => b.id !== blocoEmEdicao.id);
   await updateDoc(doc(db, 'usuarios', uid), { painel: { blocos } });
   $('blocoDialog').close();
   blocoEmEdicao = null;
@@ -1349,7 +1523,11 @@ function sairDoModoPersonalizar() {
 }
 $('interruptorPersonalizar').addEventListener('click', () => {
   if (modoPersonalizar) { sairDoModoPersonalizar(); return; }
-  painelSnapshotAntes = JSON.parse(JSON.stringify((dadosUsuario.painel && dadosUsuario.painel.blocos) || painelPadrao()));
+  painelSnapshotAntes = JSON.parse(JSON.stringify({
+    blocos: blocosAtuais(),
+    layoutDesktop: layoutDesktopAtual(),
+    layoutMobile: layoutMobileAtual()
+  }));
   modoPersonalizar = true;
   $('interruptorPersonalizar').setAttribute('aria-pressed', 'true');
   $('barraPersonalizar').hidden = false;
@@ -1358,21 +1536,33 @@ $('interruptorPersonalizar').addEventListener('click', () => {
 $('adicionarCardBtn').addEventListener('click', async () => {
   const novo = {
     id: 'custom-' + crypto.randomUUID(), tipo: 'personalizado', oculto: false,
-    largura: 'normal', cor: 'lilas', icone: 'i-estrela', titulo: 'Novo card', itens: []
+    cor: 'lilas', icone: 'i-estrela', titulo: 'Novo card', itens: []
   };
-  const blocos = [...((dadosUsuario.painel && dadosUsuario.painel.blocos) || []), novo];
+  const blocos = [...blocosAtuais(), novo];
   await updateDoc(doc(db, 'usuarios', uid), { painel: { blocos } });
   abrirEdicaoBloco(novo.id);
 });
 $('restaurarPadraoBtn').addEventListener('click', async () => {
-  if (!confirm('Restaurar a organização padrão? Os cards personalizados continuam existindo, mas os de sistema voltam pra ordem, cor e visibilidade originais.')) return;
-  const personalizados = ((dadosUsuario.painel && dadosUsuario.painel.blocos) || []).filter(b => b.tipo === 'personalizado');
+  if (!confirm('Restaurar a organização padrão? Os cards personalizados continuam existindo, mas os de sistema voltam pra ordem, cor, largura e visibilidade originais. Nenhum item, tarefa ou registro é apagado.')) return;
+  const personalizados = blocosAtuais().filter(b => b.tipo === 'personalizado');
   const blocos = [...painelPadrao(), ...personalizados];
-  await updateDoc(doc(db, 'usuarios', uid), { painel: { blocos } });
+  let colAtual = 1;
+  const layoutDesktop = blocos.map(b => {
+    const largura = b.id === 'foco' ? 3 : 1;
+    if (colAtual + largura - 1 > 3) colAtual = 1;
+    const entrada = { id: b.id, coluna: colAtual, largura };
+    colAtual += largura; if (colAtual > 3) colAtual = 1;
+    return entrada;
+  });
+  const layoutMobile = blocos.map(b => ({ id: b.id }));
+  dadosUsuario.painel = { blocos, layoutDesktop, layoutMobile };
+  aplicarPersonalizacaoPainel();
+  await updateDoc(doc(db, 'usuarios', uid), { painel: { blocos, layoutDesktop, layoutMobile } });
 });
 $('cancelarPersonalizarBtn').addEventListener('click', async () => {
   if (painelSnapshotAntes) {
-    await updateDoc(doc(db, 'usuarios', uid), { painel: { blocos: painelSnapshotAntes } });
+    dadosUsuario.painel = painelSnapshotAntes;
+    await updateDoc(doc(db, 'usuarios', uid), { painel: painelSnapshotAntes });
   }
   sairDoModoPersonalizar();
 });
@@ -1425,14 +1615,47 @@ $('campoNaoPerturbeFim').addEventListener('change', () => {
 (function ligarReordenacao() {
   const painel = $('painel');
   let arrastando = null;
+  let origemProximoIrmao = null;
+  let origemColuna = null;
+  let alvoAtual = null;
+
+  function limparAlvo() {
+    if (alvoAtual) { alvoAtual.classList.remove('bloco-alvo-solta'); alvoAtual = null; }
+  }
+
+  function detectarColunaPorX(clientX) {
+    const rect = painel.getBoundingClientRect();
+    const relativo = Math.min(Math.max(clientX - rect.left, 0), rect.width - 1);
+    return Math.min(3, Math.floor((relativo / rect.width) * 3) + 1);
+  }
 
   function moverParaPosicao(clientX, clientY) {
+    const mobile = ehTelaMobile();
+    const antes = capturarRetangulos(painel);
     const alvo = document.elementFromPoint(clientX, clientY);
     const bloco = alvo && alvo.closest('.bloco');
-    if (!bloco || bloco === arrastando || !painel.contains(bloco)) return;
-    const filhos = [...painel.children];
-    const depois = filhos.indexOf(bloco) > filhos.indexOf(arrastando);
-    painel.insertBefore(arrastando, depois ? bloco.nextSibling : bloco);
+    let mudou = false;
+    if (bloco && bloco !== arrastando && painel.contains(bloco)) {
+      const filhos = [...painel.children];
+      const depois = filhos.indexOf(bloco) > filhos.indexOf(arrastando);
+      painel.insertBefore(arrastando, depois ? bloco.nextSibling : bloco);
+      if (!mobile && bloco.dataset.coluna && bloco.dataset.coluna !== arrastando.dataset.coluna) {
+        arrastando.dataset.coluna = bloco.dataset.coluna;
+        arrastando.style.gridColumn = bloco.dataset.coluna + ' / span ' + (arrastando.dataset.largura || 1);
+      }
+      limparAlvo();
+      bloco.classList.add('bloco-alvo-solta'); alvoAtual = bloco;
+      mudou = true;
+    } else if (!mobile && !bloco) {
+      const coluna = detectarColunaPorX(clientX);
+      if (String(coluna) !== arrastando.dataset.coluna) {
+        arrastando.dataset.coluna = String(coluna);
+        arrastando.style.gridColumn = coluna + ' / span ' + (arrastando.dataset.largura || 1);
+        mudou = true;
+      }
+      limparAlvo();
+    }
+    if (mudou) animarReflow(painel, antes, arrastando);
   }
 
   painel.addEventListener('pointerdown', e => {
@@ -1442,6 +1665,8 @@ $('campoNaoPerturbeFim').addEventListener('change', () => {
     if (!bloco) return;
     e.preventDefault();
     arrastando = bloco;
+    origemProximoIrmao = bloco.nextSibling;
+    origemColuna = bloco.dataset.coluna || null;
     bloco.classList.add('arrastando');
     alca.setPointerCapture(e.pointerId);
   });
@@ -1451,34 +1676,56 @@ $('campoNaoPerturbeFim').addEventListener('change', () => {
   });
   function soltarArraste(e) {
     if (!arrastando) return;
-    arrastando.classList.remove('arrastando');
+    const bloco = arrastando;
+    bloco.classList.remove('arrastando');
     arrastando = null;
-    salvarOrdemBlocos();
+    limparAlvo();
+    const nome = nomeLayoutAtivo();
+    const entradas = layoutAtivo(nome);
+    const ordemIds = [...painel.children].map(b => b.dataset.id);
+    const porId = new Map(entradas.map(en => [en.id, en]));
+    const reordenadas = ordemIds.map(id => porId.get(id)).filter(Boolean);
+    if (nome === 'layoutDesktop' && bloco.dataset.coluna) {
+      const entrada = reordenadas.find(en => en.id === bloco.dataset.id);
+      if (entrada) {
+        const largura = entrada.largura || 1;
+        entrada.coluna = Math.min(Number(bloco.dataset.coluna), 4 - largura);
+      }
+    }
+    dadosUsuario.painel = { ...(dadosUsuario.painel || {}), [nome]: reordenadas };
+    salvarLayout(nome, reordenadas);
+    anunciar(`Card ${tituloDoId(bloco.dataset.id)} movido para ${legendaPosicao(ordemIds.indexOf(bloco.dataset.id), ordemIds.length)}.`);
     const alca = e.target.closest('.arrastar-alca');
     if (alca && alca.hasPointerCapture(e.pointerId)) alca.releasePointerCapture(e.pointerId);
   }
   painel.addEventListener('pointerup', soltarArraste);
   painel.addEventListener('pointercancel', soltarArraste);
+
+  // Esc cancela o arraste em andamento e volta o card pro lugar original, sem salvar nada.
+  document.addEventListener('keydown', e => {
+    if (e.key !== 'Escape' || !arrastando) return;
+    const bloco = arrastando;
+    bloco.classList.remove('arrastando');
+    arrastando = null;
+    limparAlvo();
+    const antes = capturarRetangulos(painel);
+    painel.insertBefore(bloco, origemProximoIrmao);
+    if (origemColuna) {
+      bloco.dataset.coluna = origemColuna;
+      bloco.style.gridColumn = origemColuna + ' / span ' + (bloco.dataset.largura || 1);
+    }
+    animarReflow(painel, antes);
+  });
+
   painel.addEventListener('keydown', e => {
     const alca = e.target.closest('.arrastar-alca');
     if (!alca || !modoPersonalizar) return;
     if (e.key !== 'ArrowUp' && e.key !== 'ArrowDown') return;
-    const bloco = alca.closest('.bloco');
     e.preventDefault();
-    const irmao = e.key === 'ArrowUp' ? bloco.previousElementSibling : bloco.nextElementSibling;
-    if (!irmao) return;
-    if (e.key === 'ArrowUp') painel.insertBefore(bloco, irmao); else painel.insertBefore(irmao, bloco);
+    const bloco = alca.closest('.bloco');
+    moverBlocoOrdem(bloco.dataset.id, e.key === 'ArrowUp' ? -1 : 1);
     alca.focus();
-    salvarOrdemBlocos();
   });
-
-  function salvarOrdemBlocos() {
-    const ordemIds = [...painel.children].map(b => b.dataset.id);
-    const atuais = (dadosUsuario.painel && dadosUsuario.painel.blocos) || painelPadrao();
-    const porId = new Map(atuais.map(b => [b.id, b]));
-    const blocos = ordemIds.map(id => porId.get(id)).filter(Boolean);
-    updateDoc(doc(db, 'usuarios', uid), { painel: { blocos } });
-  }
 })();
 
 // ---------- Rotina Falante (voz) ----------

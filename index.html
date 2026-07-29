@@ -8,9 +8,10 @@
 <link rel="manifest" href="./manifest.webmanifest">
 <link rel="icon" href="./icon-192.png">
 <link rel="apple-touch-icon" href="./icon-192.png">
-<link rel="stylesheet" href="./styles.css?v=17">
+<link rel="stylesheet" href="./styles.css?v=18">
 </head>
 <body>
+<div id="anuncioPainel" class="sr-only" aria-live="polite" aria-atomic="true"></div>
 
 <svg style="display:none" aria-hidden="true">
   <symbol id="i-gato" viewBox="0 0 20 20"><path d="M5 8 4 3l3.2 2.6a9 9 0 0 1 5.6 0L16 3l-1 5" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"/><circle cx="10" cy="11" r="6" fill="none" stroke="currentColor" stroke-width="1.5"/><path d="M8 12c.5.6 1.5.6 2 0M13.2 9.3l.1.1M6.7 9.3l-.1.1" stroke="currentColor" stroke-width="1.4" stroke-linecap="round"/></symbol>
@@ -149,12 +150,12 @@
   <div class="vista" id="vistaHoje" role="tabpanel">
 
     <div id="barraPersonalizar" class="barra-personalizar" hidden>
-      <p class="barra-personalizar-texto">Modo de personalização ativo — arraste, edite ou oculte os cards.</p>
+      <p class="barra-personalizar-texto">Modo de personalização ativo — arraste pela alça, use os botões de mover ou o menu "…" de cada card.</p>
       <div class="barra-personalizar-acoes">
         <button type="button" id="adicionarCardBtn" class="botao botao-secundario barra-btn"><svg><use href="#i-mais"/></svg>Adicionar card</button>
         <button type="button" id="restaurarPadraoBtn" class="botao botao-secundario barra-btn">Restaurar padrão</button>
         <button type="button" id="cancelarPersonalizarBtn" class="botao botao-secundario barra-btn">Cancelar alterações</button>
-        <button type="button" id="concluirPersonalizarBtn" class="botao botao-primario barra-btn">Concluir e salvar</button>
+        <button type="button" id="concluirPersonalizarBtn" class="botao botao-primario barra-btn">Salvar organização</button>
       </div>
       <div id="cardsOcultos" class="cards-ocultos" hidden>
         <p class="cards-ocultos-titulo">Cards ocultos</p>
@@ -376,7 +377,7 @@
           <button class="botao botao-secundario" id="notifBtn" style="width:auto;padding:9px 16px;" type="button">Ativar</button>
         </div>
         <div class="config-item">
-          <div class="config-item-texto"><strong>Personalizar painel</strong><span>Mostra alças, cor/ícone e opção de ocultar em cada card da aba Hoje</span></div>
+          <div class="config-item-texto"><strong>Personalizar painel</strong><span>Arraste, mova entre colunas, mude a largura, oculte ou crie cards na aba Hoje</span></div>
           <button class="interruptor" id="interruptorPersonalizar" aria-pressed="false" aria-label="Ativar modo de personalizar painel" type="button"></button>
         </div>
       </div>
@@ -456,9 +457,25 @@
       <legend>Ícone</legend>
       <div class="icone-escolha" id="iconeEscolhaBloco"></div>
     </fieldset>
-    <label class="linha-checkbox">
-      <input type="checkbox" id="campoBlocoLarga"> Card largo (ocupa a linha inteira)
-    </label>
+    <fieldset class="dias-fieldset" id="blocoDesktopFieldset">
+      <legend>Layout no computador</legend>
+      <label>
+        Largura
+        <select id="campoBlocoLargura">
+          <option value="1">1 coluna</option>
+          <option value="2">2 colunas</option>
+          <option value="3">Largura total</option>
+        </select>
+      </label>
+      <div class="bloco-posicao-acoes">
+        <button type="button" id="blocoColunaAntesBtn" class="botao botao-secundario barra-btn"><svg><use href="#i-seta-esq"/></svg>Coluna anterior</button>
+        <button type="button" id="blocoColunaDepoisBtn" class="botao botao-secundario barra-btn">Próxima coluna<svg><use href="#i-seta-dir"/></svg></button>
+      </div>
+    </fieldset>
+    <div class="bloco-posicao-acoes">
+      <button type="button" id="blocoMoverCimaBtn" class="botao botao-secundario barra-btn" aria-label="Mover card para cima"><svg class="girar-cima"><use href="#i-seta-dir"/></svg>Mover pra cima</button>
+      <button type="button" id="blocoMoverBaixoBtn" class="botao botao-secundario barra-btn" aria-label="Mover card para baixo"><svg class="girar-baixo"><use href="#i-seta-dir"/></svg>Mover pra baixo</button>
+    </div>
     <div class="form-acoes">
       <button type="button" id="ocultarBlocoBtn" class="botao botao-secundario"><svg><use href="#i-olho-fechado"/></svg></button>
       <button type="button" id="duplicarBlocoBtn" class="botao botao-secundario"><svg><use href="#i-copiar"/></svg></button>

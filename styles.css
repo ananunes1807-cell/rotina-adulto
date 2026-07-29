@@ -90,7 +90,11 @@ dialog.dialogo-chat[open] {
   display: flex;
   flex-direction: column;
 }
-html,body{ height:100%; background:var(--creme); }
+html,body{ height:100%; background:var(--creme); overflow-x:hidden; }
+.sr-only{
+  position:absolute; width:1px; height:1px; padding:0; margin:-1px; overflow:hidden;
+  clip:rect(0,0,0,0); white-space:nowrap; border:0;
+}
 body{
   margin:0; background:var(--creme); color:var(--tinta);
   font-family: var(--fonte-corpo); -webkit-font-smoothing:antialiased;
@@ -182,9 +186,9 @@ button{ font-family:inherit; cursor:pointer; }
 .mini-cal{ padding:9px 11px 10px; }
 .mini-cal-cab{ display:flex; align-items:center; justify-content:space-between; gap:6px; margin-bottom:6px; }
 .mini-cal-cab span{ font-size:.72rem; font-weight:700; text-transform:capitalize; color:var(--tinta-suave); }
-.mini-cal-grade{ display:grid; grid-template-columns:repeat(7,14px); gap:3px; }
+.mini-cal-grade{ display:grid; grid-template-columns:repeat(7,18px); gap:3px; }
 .mini-cal-grade .dia{
-  width:14px; height:14px; min-width:0; min-height:0; aspect-ratio:auto; border-radius:5px; font-size:.55rem; display:flex; align-items:center; justify-content:center;
+  width:18px; height:18px; min-width:0; min-height:0; aspect-ratio:auto; border-radius:6px; font-size:.6rem; display:flex; align-items:center; justify-content:center;
   color:var(--tinta-suave); background:none;
 }
 .mini-cal-grade .dia.hoje{ background:var(--lilas-tinta); color:#fff; font-weight:700; }
@@ -274,21 +278,23 @@ button{ font-family:inherit; cursor:pointer; }
 /* ---------- Painel em mural (bento) ---------- */
 .vista{ max-width:1240px; margin:0 auto; padding:10px clamp(16px,4vw,32px) 30px; }
 .vista[hidden]{ display:none; }
-.painel{ columns:4 16rem; column-gap:1rem; }
-@media (max-width:1079px) and (min-width:760px){ .painel{ columns:3 16rem; } }
-@media (max-width:759px) and (min-width:560px){ .painel{ columns:2 16rem; } }
-@media (max-width:559px){
-  .painel{ columns:2 9rem; column-gap:.6rem; }
-  .bloco{ padding:.85rem .85rem .95rem; margin-bottom:.6rem; }
-  .bloco-titulo{ font-size:.92rem; }
-  .bloco-sub{ font-size:.76rem; }
-  .bloco-icone{ width:1.7rem; height:1.7rem; }
-  .bloco-icone svg{ width:1rem; height:1rem; }
+
+/* Grid de verdade (não columns): cada .bloco recebe grid-column inline (JS),
+   então dá pra controlar coluna e largura sem depender de auto-flow por altura. */
+@media (min-width:760px){
+  .painel{
+    display:grid; grid-template-columns:repeat(3,1fr); grid-auto-flow:row dense;
+    gap:1rem; align-items:start;
+  }
+}
+@media (max-width:759px){
+  .painel{ display:flex; flex-direction:column; gap:.75rem; }
+  .bloco{ width:100%; }
+  .bloco-titulo{ font-size:.98rem; }
 }
 
-
 .bloco{
-  break-inside:avoid; margin:0 0 1rem; background:var(--cor-fundo, var(--superficie));
+  margin:0; background:var(--cor-fundo, var(--superficie));
   border:1px solid var(--linha); border-radius:var(--raio-xl); padding:1.25rem 1.25rem 1.35rem;
   box-shadow:var(--sombra); position:relative;
 }
@@ -299,14 +305,16 @@ button{ font-family:inherit; cursor:pointer; }
 .bloco[data-cor="pessego"]{ --cor-fundo:var(--pessego-fundo); --cor-tinta:var(--pessego-tinta); }
 .bloco[data-cor="areia"]{ --cor-fundo:var(--areia-fundo); --cor-tinta:var(--areia-tinta); }
 .bloco[data-cor="dourado"]{ --cor-fundo:var(--dourado-fundo); --cor-tinta:var(--dourado-tinta); }
-.bloco.arrastando{ opacity:.45; }
+.bloco.arrastando{ opacity:.55; box-shadow:0 20px 40px -16px rgba(43,42,40,.4); z-index:5; }
 .bloco--foco{ background:linear-gradient(165deg, var(--pessego-fundo), var(--rosa-fundo)); }
 .bloco--foco .bloco-titulo{ color:var(--pessego-tinta); }
-.bloco--larga{ break-inside:avoid; column-span:all; }
 
 .bloco-cab{ display:flex; align-items:center; justify-content:space-between; gap:8px; margin-bottom:12px; flex-wrap:wrap; }
 .bloco-titulo-grupo{ display:flex; align-items:center; gap:9px; min-width:0; }
 .bloco-controles{ display:flex; align-items:center; gap:2px; flex:0 0 auto; }
+@media (max-width:759px){
+  #painel.modo-personalizar .bloco-controles{ flex-wrap:wrap; justify-content:flex-end; }
+}
 .bloco-icone{
   width:2.1rem; height:2.1rem; border-radius:50%; flex:0 0 auto; background:rgba(255,255,255,.55);
   display:flex; align-items:center; justify-content:center; color:var(--cor-tinta, var(--lilas-tinta));
@@ -330,10 +338,33 @@ button{ font-family:inherit; cursor:pointer; }
 .bloco-opcoes-btn:hover{ opacity:1; background:rgba(255,255,255,.5); }
 .bloco-opcoes-btn svg{ width:1em; height:1em; }
 
+/* Botões "mover pra cima/baixo": só aparecem no celular (no computador já dá
+   pra arrastar com mouse, ou usar setas do teclado com foco na alça) */
+.bloco-mover-btn{
+  display:none; background:none; border:none; color:var(--tinta-suave); opacity:.55;
+  width:1.7rem; height:1.7rem; min-width:28px; min-height:28px;
+  border-radius:8px; align-items:center; justify-content:center; flex:0 0 auto;
+}
+.bloco-mover-btn:hover{ opacity:1; background:rgba(255,255,255,.5); }
+.bloco-mover-btn svg{ width:1em; height:1em; }
+@media (max-width:759px){
+  #painel.modo-personalizar .bloco-mover-btn{ display:flex; }
+}
+
 /* Fora do modo de personalizar, o painel fica limpo: sem alça nem botão de opções */
 #painel:not(.modo-personalizar) .arrastar-alca,
 #painel:not(.modo-personalizar) .bloco-opcoes-btn{ display:none; }
 #painel.modo-personalizar .bloco{ outline:1.5px dashed var(--anel); outline-offset:3px; }
+.bloco-alvo-solta{ outline:2.5px dashed var(--lilas-tinta); outline-offset:3px; }
+
+/* No celular, área de toque mínima de 44x44px pros controles de edição */
+@media (max-width:759px){
+  #painel.modo-personalizar .arrastar-alca,
+  #painel.modo-personalizar .bloco-mover-btn,
+  #painel.modo-personalizar .bloco-opcoes-btn{
+    width:2.75rem; height:2.75rem; min-width:44px; min-height:44px;
+  }
+}
 
 /* ---------- Barra da Rotina Falante ---------- */
 .barra-voz{
@@ -528,8 +559,8 @@ button{ font-family:inherit; cursor:pointer; }
 :root[data-tema="escuro"] .refeicao{ border-color:rgba(255,255,255,.04); }
 .refeicao span{ font-size:.78rem; font-weight:600; }
 .refeicao button{
-  font-size:.68rem; font-weight:700; padding:.4rem .8rem; min-height:32px; border-radius:99px; border:none;
-  background:var(--linha); color:var(--tinta-suave);
+  font-size:.68rem; font-weight:700; padding:.4rem .8rem; min-height:44px; border-radius:99px; border:none;
+  background:var(--linha); color:var(--tinta-suave); width:100%;
 }
 .refeicao button.marcada{ background:var(--cor-tinta); color:#fff; }
 
@@ -601,6 +632,10 @@ button{ font-family:inherit; cursor:pointer; }
 .icone-escolha svg{ width:1.05rem; height:1.05rem; }
 .form-acoes{ display:flex; gap:10px; margin-top:24px; flex-wrap:wrap; }
 .form-acoes .botao{ min-width:6rem; }
+.bloco-posicao-acoes{ display:flex; gap:8px; margin-top:10px; flex-wrap:wrap; }
+.bloco-posicao-acoes .botao{ flex:1; min-width:9rem; }
+.girar-cima{ transform:rotate(-90deg); }
+.girar-baixo{ transform:rotate(90deg); }
 
 /* ---------- Diálogo "Novo item": compacto, largura maior, botões sempre visíveis ---------- */
 .dialogo-compacta{
