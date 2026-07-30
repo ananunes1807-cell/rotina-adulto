@@ -62,8 +62,6 @@ let itemAtualChat = null;
 let itemEmEdicao = null;
 let diaDialogAtual = null;
 let blocoEmEdicao = null;
-let modoPersonalizar = false;
-let painelSnapshotAntes = null;
 
 // ---------- Tema claro/escuro ----------
 function aplicarTema(tema) {
@@ -1128,6 +1126,16 @@ function atualizarBloco(id, mudancas) {
   const blocos = blocosAtuais().map(b => b.id === id ? { ...b, ...mudancas } : b);
   return updateDoc(doc(db, 'usuarios', uid), { painel: { blocos } });
 }
+// Como atualizarBloco, mas atualiza a tela na hora (sem esperar o Firestore
+// ir e voltar) e mostra o aviso "Organização salva." — usado nas ações que
+// não têm mais um botão "Salvar" dedicado (ocultar, mostrar de novo, editar).
+async function atualizarBlocoComAviso(id, mudancas, aviso) {
+  const blocos = blocosAtuais().map(b => b.id === id ? { ...b, ...mudancas } : b);
+  dadosUsuario.painel = { ...(dadosUsuario.painel || {}), blocos };
+  aplicarPersonalizacaoPainel();
+  await updateDoc(doc(db, 'usuarios', uid), { painel: { blocos } });
+  if (aviso) mostrarToast(aviso);
+}
 function tituloDoId(id) {
   const bloco = encontrarBloco(id);
   return bloco ? resolverAparenciaBloco(bloco).titulo : 'Card';
@@ -1136,8 +1144,21 @@ function anunciar(texto) {
   const el = $('anuncioPainel');
   if (el) el.textContent = texto;
 }
+let toastTimeout;
+function mostrarToast(texto) {
+  const el = $('toastPainel');
+  if (!el) return;
+  el.textContent = texto;
+  el.hidden = false;
+  requestAnimationFrame(() => el.classList.add('visivel'));
+  clearTimeout(toastTimeout);
+  toastTimeout = setTimeout(() => {
+    el.classList.remove('visivel');
+    setTimeout(() => { el.hidden = true; }, 220);
+  }, 1800);
+}
 
-// ---------- Layout do painel: coluna/largura/ordem separados por dispositivo ----------
+// ---------- Layout do painel: coluna/ordem separados por dispositivo ----------
 // O conteúdo do card (dadosUsuario.painel.blocos) é uma coisa; ONDE ele fica na
 // tela é outra, guardada à parte em layoutDesktop/layoutMobile (a ordem no
 // array = a ordem visual). Isso permite o celular ter uma organização
@@ -1154,10 +1175,8 @@ function layoutDesktopAtual() {
   // foi salvo antes.
   let colAtual = 1;
   const novos = blocos.filter(b => !idsVistos.has(b.id)).map(b => {
-    const largura = b.id === 'foco' && !salvo.length ? 3 : (b.largura === 'larga' ? 2 : 1);
-    if (colAtual + largura - 1 > 3) colAtual = 1;
-    const entrada = { id: b.id, coluna: colAtual, largura };
-    colAtual += largura; if (colAtual > 3) colAtual = 1;
+    const entrada = { id: b.id, coluna: colAtual };
+    colAtual = colAtual >= 3 ? 1 : colAtual + 1;
     return entrada;
   });
   return [...validos, ...novos];
@@ -1206,14 +1225,6 @@ function legendaPosicao(indice, total) {
   return `a posição ${indice + 1}`;
 }
 
-// Atualiza o layout na memória local (pra re-renderizar já, animado, sem
-// esperar a viagem de ida e volta do Firestore) e manda salvar em paralelo.
-function aplicarLayoutLocal(nome, entradas) {
-  dadosUsuario.painel = { ...(dadosUsuario.painel || {}), [nome]: entradas };
-  aplicarPersonalizacaoPainel();
-  salvarLayout(nome, entradas);
-}
-
 function moverBlocoOrdem(id, delta) {
   const nome = nomeLayoutAtivo();
   const entradas = layoutAtivo(nome);
@@ -1222,29 +1233,11 @@ function moverBlocoOrdem(id, delta) {
   if (i < 0 || j < 0 || j >= entradas.length) return;
   const [item] = entradas.splice(i, 1);
   entradas.splice(j, 0, item);
-  aplicarLayoutLocal(nome, entradas);
+  dadosUsuario.painel = { ...(dadosUsuario.painel || {}), [nome]: entradas };
+  aplicarPersonalizacaoPainel();
+  salvarLayout(nome, entradas);
+  mostrarToast('Organização salva.');
   anunciar(`Card ${tituloDoId(id)} movido para ${legendaPosicao(j, entradas.length)}.`);
-}
-function moverBlocoColuna(id, delta) {
-  const entradas = layoutDesktopAtual();
-  const entrada = entradas.find(e => e.id === id);
-  if (!entrada) return;
-  const largura = entrada.largura || 1;
-  const alvo = Math.min(4 - largura, Math.max(1, entrada.coluna + delta));
-  if (alvo === entrada.coluna) return;
-  entrada.coluna = alvo;
-  aplicarLayoutLocal('layoutDesktop', entradas);
-  anunciar(`Card ${tituloDoId(id)} movido para a coluna ${alvo}.`);
-}
-function alterarLarguraBloco(id, novaLargura) {
-  const entradas = layoutDesktopAtual();
-  const entrada = entradas.find(e => e.id === id);
-  if (!entrada) return;
-  entrada.largura = novaLargura;
-  if (entrada.coluna + novaLargura - 1 > 3) entrada.coluna = 4 - novaLargura;
-  aplicarLayoutLocal('layoutDesktop', entradas);
-  const legendas = { 1: '1 coluna', 2: '2 colunas', 3: 'largura total' };
-  anunciar(`Card ${tituloDoId(id)} agora ocupa ${legendas[novaLargura]}.`);
 }
 
 function garantirControlesEdicao(el, id) {
@@ -1260,35 +1253,21 @@ function garantirControlesEdicao(el, id) {
     });
     cab.appendChild(controles);
   }
-  if (!controles.querySelector('.bloco-mover-cima')) {
-    const cima = document.createElement('button');
-    cima.type = 'button'; cima.className = 'bloco-mover-btn bloco-mover-cima';
-    cima.setAttribute('aria-label', 'Mover card para cima');
-    cima.innerHTML = '<svg class="girar-cima"><use href="#i-seta-dir"/></svg>';
-    cima.addEventListener('click', () => moverBlocoOrdem(id, -1));
-    controles.insertBefore(cima, controles.firstChild);
-  }
   if (!controles.querySelector('.arrastar-alca')) {
     const alca = document.createElement('button');
     alca.type = 'button'; alca.className = 'arrastar-alca'; alca.tabIndex = 0;
     alca.setAttribute('aria-label', 'Reordenar card ' + resolverAparenciaBloco(encontrarBloco(id) || {}).titulo);
     alca.innerHTML = '<svg><use href="#i-alca"/></svg>';
-    controles.insertBefore(alca, controles.querySelector('.bloco-mover-cima').nextSibling);
-  }
-  if (!controles.querySelector('.bloco-mover-baixo')) {
-    const baixo = document.createElement('button');
-    baixo.type = 'button'; baixo.className = 'bloco-mover-btn bloco-mover-baixo';
-    baixo.setAttribute('aria-label', 'Mover card para baixo');
-    baixo.innerHTML = '<svg class="girar-baixo"><use href="#i-seta-dir"/></svg>';
-    baixo.addEventListener('click', () => moverBlocoOrdem(id, 1));
-    controles.insertBefore(baixo, controles.querySelector('.arrastar-alca').nextSibling);
+    controles.insertBefore(alca, controles.firstChild);
   }
   if (!controles.querySelector('.bloco-opcoes-btn')) {
     const opcoes = document.createElement('button');
     opcoes.type = 'button'; opcoes.className = 'bloco-opcoes-btn';
     opcoes.setAttribute('aria-label', 'Opções do card');
+    opcoes.setAttribute('aria-haspopup', 'true');
+    opcoes.setAttribute('aria-expanded', 'false');
     opcoes.innerHTML = '<svg><use href="#i-tres-pontos"/></svg>';
-    opcoes.addEventListener('click', () => abrirEdicaoBloco(id));
+    opcoes.addEventListener('click', () => abrirMenuOpcoes(opcoes, id));
     controles.appendChild(opcoes);
   }
 }
@@ -1296,6 +1275,16 @@ function garantirControlesEdicao(el, id) {
 function criarBlocoPersonalizado(entry) {
   const el = document.createElement('article');
   el.className = 'bloco'; el.dataset.id = entry.id;
+  const conteudo = entry.conteudo || 'checklist';
+  const corpoHtml = conteudo === 'texto'
+    ? `<textarea class="mente-area" data-texto-personalizado maxlength="2000" placeholder="Escreva livremente…"></textarea>`
+    : `<ul class="lista-itens" data-lista-personalizada></ul>
+       <p class="bloco-sub" data-vazio-personalizada hidden>Nada por aqui ainda.</p>
+       <form class="bloco-personalizado-form mini-form">
+         <input type="text" maxlength="60" placeholder="Adicionar item…">
+         ${conteudo === 'checklist' ? '<input type="time" class="mini-form-hora" aria-label="Horário (opcional)">' : ''}
+         <button type="submit" class="botao-icone-destaque" aria-label="Adicionar item"><svg><use href="#i-mais"/></svg></button>
+       </form>`;
   el.innerHTML = `
     <div class="bloco-cab">
       <div class="bloco-titulo-grupo">
@@ -1303,37 +1292,47 @@ function criarBlocoPersonalizado(entry) {
         <span class="bloco-titulo"></span>
       </div>
     </div>
-    <ul class="lista-itens" data-lista-personalizada></ul>
-    <p class="bloco-sub" data-vazio-personalizada hidden>Nada por aqui ainda.</p>
-    <form class="bloco-personalizado-form mini-form">
-      <input type="text" maxlength="60" placeholder="Adicionar item…">
-      <input type="time" class="mini-form-hora" aria-label="Horário (opcional)">
-      <button type="submit" class="botao-icone-destaque" aria-label="Adicionar item"><svg><use href="#i-mais"/></svg></button>
-    </form>
+    ${corpoHtml}
   `;
-  el.querySelector('.bloco-personalizado-form').addEventListener('submit', e => {
-    e.preventDefault();
-    const input = e.target.querySelector('input[type="text"]');
-    const horarioInput = e.target.querySelector('input[type="time"]');
-    const texto = input.value.trim();
-    if (!texto) return;
-    adicionarItemPersonalizado(entry.id, texto, horarioInput.value || null);
-    input.value = ''; horarioInput.value = '';
-  });
+  if (conteudo === 'texto') {
+    const area = el.querySelector('[data-texto-personalizado]');
+    let debounceTexto;
+    area.addEventListener('input', () => {
+      clearTimeout(debounceTexto);
+      debounceTexto = setTimeout(() => atualizarBloco(entry.id, { texto: area.value }), 500);
+    });
+  } else {
+    el.querySelector('.bloco-personalizado-form').addEventListener('submit', e => {
+      e.preventDefault();
+      const input = e.target.querySelector('input[type="text"]');
+      const horarioInput = e.target.querySelector('input[type="time"]');
+      const texto = input.value.trim();
+      if (!texto) return;
+      adicionarItemPersonalizado(entry.id, texto, horarioInput ? horarioInput.value || null : null);
+      input.value = ''; if (horarioInput) horarioInput.value = '';
+    });
+  }
   return el;
 }
 
-function renderizarItensPersonalizado(entry, el) {
+function renderizarConteudoPersonalizado(entry, el) {
+  const conteudo = entry.conteudo || 'checklist';
+  if (conteudo === 'texto') {
+    const area = el.querySelector('[data-texto-personalizado]');
+    if (area && document.activeElement !== area) area.value = entry.texto || '';
+    return;
+  }
   const ul = el.querySelector('[data-lista-personalizada]');
   const vazio = el.querySelector('[data-vazio-personalizada]');
   if (!ul) return;
   ul.innerHTML = '';
+  const mostraCheck = conteudo === 'checklist';
   const itensBloco = entry.itens || [];
   itensBloco.forEach(item => {
     const li = document.createElement('li');
     li.className = 'item' + (item.feita ? ' feita' : '');
     li.innerHTML = `
-      <button class="marca-check" aria-label="Marcar concluído"><svg><use href="#i-check"/></svg><svg class="patinha"><use href="#i-pata"/></svg></button>
+      ${mostraCheck ? '<button class="marca-check" aria-label="Marcar concluído"><svg><use href="#i-check"/></svg><svg class="patinha"><use href="#i-pata"/></svg></button>' : ''}
       <div class="item-corpo"><p class="item-nome"></p><div class="item-meta">${item.horario ? '<span class="item-hora"></span>' : ''}</div></div>
       <div class="item-acoes">
         <button type="button" class="item-acao item-falar" aria-label="Ouvir este item"><svg><use href="#i-alto-falante"/></svg></button>
@@ -1342,7 +1341,7 @@ function renderizarItensPersonalizado(entry, el) {
     `;
     li.querySelector('.item-nome').textContent = item.texto;
     if (item.horario) li.querySelector('.item-hora').textContent = item.horario;
-    li.querySelector('.marca-check').addEventListener('click', () => alternarItemPersonalizado(entry.id, item.id));
+    if (mostraCheck) li.querySelector('.marca-check').addEventListener('click', () => alternarItemPersonalizado(entry.id, item.id));
     li.querySelector('.item-falar').addEventListener('click', () => falarItem({ nome: item.texto, horario: item.horario }));
     li.querySelector('.item-acoes .item-acao:last-child').addEventListener('click', () => excluirItemPersonalizado(entry.id, item.id));
     ul.appendChild(li);
@@ -1385,13 +1384,11 @@ function aplicarPersonalizacaoPainel() {
     el.hidden = !!entry.oculto;
     if (mobile) {
       el.style.gridColumn = '';
-      delete el.dataset.coluna; delete el.dataset.largura;
+      delete el.dataset.coluna;
     } else {
-      const largura = Math.min(entrada.largura || 1, 3);
-      const coluna = Math.min(entrada.coluna || 1, 4 - largura);
-      el.style.gridColumn = coluna + ' / span ' + largura;
+      const coluna = Math.min(Math.max(entrada.coluna || 1, 1), 3);
+      el.style.gridColumn = coluna + ' / span 1';
       el.dataset.coluna = String(coluna);
-      el.dataset.largura = String(largura);
     }
     const aparencia = resolverAparenciaBloco(entry);
     el.dataset.cor = aparencia.cor;
@@ -1400,28 +1397,32 @@ function aplicarPersonalizacaoPainel() {
     const tituloEl = el.querySelector('.bloco-titulo');
     if (tituloEl) tituloEl.textContent = aparencia.titulo;
     garantirControlesEdicao(el, entry.id);
-    if (entry.tipo === 'personalizado') renderizarItensPersonalizado(entry, el);
+    if (entry.tipo === 'personalizado') renderizarConteudoPersonalizado(entry, el);
   });
   [...painel.querySelectorAll('.bloco[data-id^="custom-"]')].forEach(el => {
     if (!idsVistos.has(el.dataset.id)) el.remove();
   });
-  painel.classList.toggle('modo-personalizar', modoPersonalizar);
   animarReflow(painel, antes);
   renderizarCardsOcultos(blocos);
 }
 
 function renderizarCardsOcultos(blocos) {
+  const cab = $('cardsOcultosCab');
   const secao = $('cardsOcultos');
   const lista = $('listaCardsOcultos');
   const ocultos = blocos.filter(b => b.oculto);
   lista.innerHTML = '';
-  secao.hidden = !modoPersonalizar || ocultos.length === 0;
+  const temOcultos = ocultos.length > 0;
+  cab.hidden = !temOcultos;
+  secao.hidden = !temOcultos;
   ocultos.forEach(b => {
     const aparencia = resolverAparenciaBloco(b);
     const chip = document.createElement('div'); chip.className = 'card-oculto-chip';
-    chip.innerHTML = '<span></span><button type="button"><svg><use href="#i-olho"/></svg>Mostrar</button>';
+    chip.innerHTML = '<span></span><button type="button"><svg><use href="#i-olho"/></svg>Mostrar novamente</button>';
     chip.querySelector('span').textContent = aparencia.titulo;
-    chip.querySelector('button').addEventListener('click', () => atualizarBloco(b.id, { oculto: false }));
+    chip.querySelector('button').addEventListener('click', () => {
+      atualizarBlocoComAviso(b.id, { oculto: false }, `${aparencia.titulo} está visível de novo.`);
+    });
     lista.appendChild(chip);
   });
 }
@@ -1434,7 +1435,59 @@ function renderizarCardsOcultos(blocos) {
   if (mq.addEventListener) mq.addEventListener('change', ouvir); else mq.addListener(ouvir);
 })();
 
-// ---------- Diálogo de opções do card ----------
+// ---------- Menu "…" de cada card (editar / mover / ocultar) ----------
+let menuOpcoesCardId = null;
+function fecharMenuOpcoes() {
+  const menu = $('blocoOpcoesMenu');
+  menu.hidden = true;
+  if (menuOpcoesCardId) {
+    const btn = document.querySelector(`.bloco[data-id="${menuOpcoesCardId}"] .bloco-opcoes-btn`);
+    if (btn) btn.setAttribute('aria-expanded', 'false');
+  }
+  menuOpcoesCardId = null;
+}
+function abrirMenuOpcoes(botao, id) {
+  const menu = $('blocoOpcoesMenu');
+  if (menuOpcoesCardId === id && !menu.hidden) { fecharMenuOpcoes(); return; }
+  fecharMenuOpcoes();
+  menuOpcoesCardId = id;
+  menu.hidden = false;
+  botao.setAttribute('aria-expanded', 'true');
+  const rect = botao.getBoundingClientRect();
+  const largura = menu.offsetWidth || 192;
+  let esquerda = rect.right - largura;
+  if (esquerda < 8) esquerda = 8;
+  if (esquerda + largura > window.innerWidth - 8) esquerda = window.innerWidth - largura - 8;
+  let topo = rect.bottom + 6;
+  if (topo + menu.offsetHeight > window.innerHeight - 8) topo = rect.top - menu.offsetHeight - 6;
+  menu.style.left = esquerda + 'px';
+  menu.style.top = topo + 'px';
+}
+$('blocoOpcoesMenu').addEventListener('click', e => {
+  const btn = e.target.closest('button[data-acao]');
+  if (!btn || !menuOpcoesCardId) return;
+  const id = menuOpcoesCardId;
+  const acao = btn.dataset.acao;
+  fecharMenuOpcoes();
+  if (acao === 'editar') abrirEdicaoBloco(id);
+  else if (acao === 'cima') moverBlocoOrdem(id, -1);
+  else if (acao === 'baixo') moverBlocoOrdem(id, 1);
+  else if (acao === 'ocultar') {
+    const titulo = tituloDoId(id);
+    atualizarBlocoComAviso(id, { oculto: true }, `${titulo} foi ocultado. Você pode trazer de volta em Config. → Cards ocultos.`);
+  }
+});
+document.addEventListener('click', e => {
+  const menu = $('blocoOpcoesMenu');
+  if (menu.hidden) return;
+  if (e.target.closest('#blocoOpcoesMenu') || e.target.closest('.bloco-opcoes-btn')) return;
+  fecharMenuOpcoes();
+});
+document.addEventListener('keydown', e => {
+  if (e.key === 'Escape' && !$('blocoOpcoesMenu').hidden) fecharMenuOpcoes();
+});
+
+// ---------- Diálogo: editar card (título, cor, ícone) ----------
 $('iconeEscolhaBloco').innerHTML = ICONES_ESCOLHA_BLOCO
   .map(ic => `<label><input type="radio" name="iconeBloco" value="${ic}"><svg><use href="#${ic}"/></svg></label>`)
   .join('');
@@ -1444,21 +1497,11 @@ function abrirEdicaoBloco(id) {
   if (!bloco) return;
   blocoEmEdicao = bloco;
   const aparencia = resolverAparenciaBloco(bloco);
-  $('blocoDialogTitulo').textContent = 'Opções — ' + aparencia.titulo;
+  $('blocoDialogTitulo').textContent = 'Editar — ' + aparencia.titulo;
   $('campoBlocoTitulo').value = bloco.titulo || '';
   $('campoBlocoTitulo').placeholder = aparencia.titulo;
   document.querySelectorAll('#corEscolha input').forEach(i => { i.checked = i.value === aparencia.cor; });
   document.querySelectorAll('#iconeEscolhaBloco input').forEach(i => { i.checked = i.value === aparencia.icone; });
-  const mobile = ehTelaMobile();
-  $('blocoDesktopFieldset').hidden = mobile;
-  if (!mobile) {
-    const entradaDesktop = layoutDesktopAtual().find(e => e.id === id);
-    $('campoBlocoLargura').value = String((entradaDesktop && entradaDesktop.largura) || 1);
-  }
-  $('excluirBlocoBtn').hidden = bloco.tipo !== 'personalizado';
-  $('ocultarBlocoBtn').innerHTML = bloco.oculto
-    ? '<svg><use href="#i-olho"/></svg> Mostrar'
-    : '<svg><use href="#i-olho-fechado"/></svg> Ocultar';
   $('blocoDialog').showModal();
 }
 
@@ -1467,106 +1510,37 @@ $('blocoForm').addEventListener('submit', async () => {
   const titulo = $('campoBlocoTitulo').value.trim();
   const cor = document.querySelector('#corEscolha input:checked')?.value || null;
   const icone = document.querySelector('#iconeEscolhaBloco input:checked')?.value || null;
-  await atualizarBloco(blocoEmEdicao.id, { titulo: titulo || null, cor, icone });
-  if (!ehTelaMobile()) {
-    const novaLargura = Number($('campoBlocoLargura').value) || 1;
-    const entradaAtual = layoutDesktopAtual().find(e => e.id === blocoEmEdicao.id);
-    if (!entradaAtual || entradaAtual.largura !== novaLargura) alterarLarguraBloco(blocoEmEdicao.id, novaLargura);
-  }
+  await atualizarBlocoComAviso(blocoEmEdicao.id, { titulo: titulo || null, cor, icone }, 'Card atualizado.');
   blocoEmEdicao = null;
 });
 $('fecharBlocoDialog').addEventListener('click', () => { $('blocoDialog').close(); blocoEmEdicao = null; });
 
-$('blocoMoverCimaBtn').addEventListener('click', () => { if (blocoEmEdicao) moverBlocoOrdem(blocoEmEdicao.id, -1); });
-$('blocoMoverBaixoBtn').addEventListener('click', () => { if (blocoEmEdicao) moverBlocoOrdem(blocoEmEdicao.id, 1); });
-$('blocoColunaAntesBtn').addEventListener('click', () => { if (blocoEmEdicao) moverBlocoColuna(blocoEmEdicao.id, -1); });
-$('blocoColunaDepoisBtn').addEventListener('click', () => { if (blocoEmEdicao) moverBlocoColuna(blocoEmEdicao.id, 1); });
+// ---------- Diálogo: criar card novo ----------
+$('iconeEscolhaNovoCard').innerHTML = ICONES_ESCOLHA_BLOCO
+  .map(ic => `<label><input type="radio" name="iconeNovoCard" value="${ic}"><svg><use href="#${ic}"/></svg></label>`)
+  .join('');
 
-$('ocultarBlocoBtn').addEventListener('click', async () => {
-  if (!blocoEmEdicao) return;
-  await atualizarBloco(blocoEmEdicao.id, { oculto: !blocoEmEdicao.oculto });
-  $('blocoDialog').close();
-  blocoEmEdicao = null;
+$('adicionarCardBtn').addEventListener('click', () => {
+  $('novoCardForm').reset();
+  document.querySelector('#corEscolhaNovoCard input[value="rosa"]').checked = true;
+  document.querySelectorAll('#iconeEscolhaNovoCard input').forEach(i => { i.checked = false; });
+  $('novoCardDialog').showModal();
 });
-
-$('duplicarBlocoBtn').addEventListener('click', async () => {
-  if (!blocoEmEdicao) return;
-  const aparencia = resolverAparenciaBloco(blocoEmEdicao);
-  const novo = {
-    id: 'custom-' + crypto.randomUUID(), tipo: 'personalizado', oculto: false,
-    cor: aparencia.cor, icone: aparencia.icone,
-    titulo: aparencia.titulo + ' (cópia)',
-    itens: blocoEmEdicao.tipo === 'personalizado' ? (blocoEmEdicao.itens || []).map(i => ({ ...i, id: crypto.randomUUID() })) : []
-  };
+$('fecharNovoCardDialog').addEventListener('click', () => $('novoCardDialog').close());
+$('novoCardForm').addEventListener('submit', async () => {
+  const nome = $('campoNovoCardNome').value.trim();
+  if (!nome) return;
+  const cor = document.querySelector('#corEscolhaNovoCard input:checked')?.value || 'rosa';
+  const icone = document.querySelector('#iconeEscolhaNovoCard input:checked')?.value || 'i-estrela';
+  const conteudo = document.querySelector('input[name="tipoNovoCard"]:checked')?.value || 'checklist';
+  const novo = { id: 'custom-' + crypto.randomUUID(), tipo: 'personalizado', oculto: false, cor, icone, titulo: nome, conteudo };
+  if (conteudo === 'texto') novo.texto = ''; else novo.itens = [];
   const blocos = [...blocosAtuais(), novo];
-  await updateDoc(doc(db, 'usuarios', uid), { painel: { blocos } });
-  $('blocoDialog').close();
-  blocoEmEdicao = null;
-});
-
-$('excluirBlocoBtn').addEventListener('click', async () => {
-  if (!blocoEmEdicao || blocoEmEdicao.tipo !== 'personalizado') return;
-  if (!confirm('Excluir este card personalizado? Essa ação não pode ser desfeita.')) return;
-  const blocos = blocosAtuais().filter(b => b.id !== blocoEmEdicao.id);
-  await updateDoc(doc(db, 'usuarios', uid), { painel: { blocos } });
-  $('blocoDialog').close();
-  blocoEmEdicao = null;
-});
-
-// ---------- Modo "Personalizar painel" ----------
-function sairDoModoPersonalizar() {
-  modoPersonalizar = false;
-  painelSnapshotAntes = null;
-  $('interruptorPersonalizar').setAttribute('aria-pressed', 'false');
-  $('barraPersonalizar').hidden = true;
+  dadosUsuario.painel = { ...(dadosUsuario.painel || {}), blocos };
   aplicarPersonalizacaoPainel();
-}
-$('interruptorPersonalizar').addEventListener('click', () => {
-  if (modoPersonalizar) { sairDoModoPersonalizar(); return; }
-  painelSnapshotAntes = JSON.parse(JSON.stringify({
-    blocos: blocosAtuais(),
-    layoutDesktop: layoutDesktopAtual(),
-    layoutMobile: layoutMobileAtual()
-  }));
-  modoPersonalizar = true;
-  $('interruptorPersonalizar').setAttribute('aria-pressed', 'true');
-  $('barraPersonalizar').hidden = false;
-  aplicarPersonalizacaoPainel();
-});
-$('adicionarCardBtn').addEventListener('click', async () => {
-  const novo = {
-    id: 'custom-' + crypto.randomUUID(), tipo: 'personalizado', oculto: false,
-    cor: 'lilas', icone: 'i-estrela', titulo: 'Novo card', itens: []
-  };
-  const blocos = [...blocosAtuais(), novo];
   await updateDoc(doc(db, 'usuarios', uid), { painel: { blocos } });
-  abrirEdicaoBloco(novo.id);
+  mostrarToast('Card criado — arraste pra posição que preferir.');
 });
-$('restaurarPadraoBtn').addEventListener('click', async () => {
-  if (!confirm('Restaurar a organização padrão? Os cards personalizados continuam existindo, mas os de sistema voltam pra ordem, cor, largura e visibilidade originais. Nenhum item, tarefa ou registro é apagado.')) return;
-  const personalizados = blocosAtuais().filter(b => b.tipo === 'personalizado');
-  const blocos = [...painelPadrao(), ...personalizados];
-  let colAtual = 1;
-  const layoutDesktop = blocos.map(b => {
-    const largura = b.id === 'foco' ? 3 : 1;
-    if (colAtual + largura - 1 > 3) colAtual = 1;
-    const entrada = { id: b.id, coluna: colAtual, largura };
-    colAtual += largura; if (colAtual > 3) colAtual = 1;
-    return entrada;
-  });
-  const layoutMobile = blocos.map(b => ({ id: b.id }));
-  dadosUsuario.painel = { blocos, layoutDesktop, layoutMobile };
-  aplicarPersonalizacaoPainel();
-  await updateDoc(doc(db, 'usuarios', uid), { painel: { blocos, layoutDesktop, layoutMobile } });
-});
-$('cancelarPersonalizarBtn').addEventListener('click', async () => {
-  if (painelSnapshotAntes) {
-    dadosUsuario.painel = painelSnapshotAntes;
-    await updateDoc(doc(db, 'usuarios', uid), { painel: painelSnapshotAntes });
-  }
-  sairDoModoPersonalizar();
-});
-$('concluirPersonalizarBtn').addEventListener('click', sairDoModoPersonalizar);
 
 // ---------- Config da Rotina Falante ----------
 function salvarPrefsVoz(mudancas) {
@@ -1608,10 +1582,11 @@ $('campoNaoPerturbeFim').addEventListener('change', () => {
   salvarPrefsVoz({ naoPerturbe: { ...prefsVoz().naoPerturbe, fim: $('campoNaoPerturbeFim').value } });
 });
 
-// ---------- Reordenar blocos (arrastar por toque/mouse/caneta + teclado, só no modo personalizar) ----------
+// ---------- Reordenar blocos (arrastar por toque/mouse/caneta + teclado) ----------
 // Pointer Events em vez de Drag and Drop nativo: o HTML5 dragstart/dragover só
 // dispara de verdade com mouse — no toque (celular) ele simplesmente não funciona.
-// Pointer Events unificam mouse, dedo e caneta no mesmo código.
+// Pointer Events unificam mouse, dedo e caneta no mesmo código. Sempre ativo —
+// não existe mais um "modo de personalizar" separado pra ligar isso.
 (function ligarReordenacao() {
   const painel = $('painel');
   let arrastando = null;
@@ -1641,7 +1616,7 @@ $('campoNaoPerturbeFim').addEventListener('change', () => {
       painel.insertBefore(arrastando, depois ? bloco.nextSibling : bloco);
       if (!mobile && bloco.dataset.coluna && bloco.dataset.coluna !== arrastando.dataset.coluna) {
         arrastando.dataset.coluna = bloco.dataset.coluna;
-        arrastando.style.gridColumn = bloco.dataset.coluna + ' / span ' + (arrastando.dataset.largura || 1);
+        arrastando.style.gridColumn = bloco.dataset.coluna + ' / span 1';
       }
       limparAlvo();
       bloco.classList.add('bloco-alvo-solta'); alvoAtual = bloco;
@@ -1650,7 +1625,7 @@ $('campoNaoPerturbeFim').addEventListener('change', () => {
       const coluna = detectarColunaPorX(clientX);
       if (String(coluna) !== arrastando.dataset.coluna) {
         arrastando.dataset.coluna = String(coluna);
-        arrastando.style.gridColumn = coluna + ' / span ' + (arrastando.dataset.largura || 1);
+        arrastando.style.gridColumn = coluna + ' / span 1';
         mudou = true;
       }
       limparAlvo();
@@ -1660,7 +1635,7 @@ $('campoNaoPerturbeFim').addEventListener('change', () => {
 
   painel.addEventListener('pointerdown', e => {
     const alca = e.target.closest('.arrastar-alca');
-    if (!alca || !modoPersonalizar) return;
+    if (!alca) return;
     const bloco = alca.closest('.bloco');
     if (!bloco) return;
     e.preventDefault();
@@ -1687,13 +1662,11 @@ $('campoNaoPerturbeFim').addEventListener('change', () => {
     const reordenadas = ordemIds.map(id => porId.get(id)).filter(Boolean);
     if (nome === 'layoutDesktop' && bloco.dataset.coluna) {
       const entrada = reordenadas.find(en => en.id === bloco.dataset.id);
-      if (entrada) {
-        const largura = entrada.largura || 1;
-        entrada.coluna = Math.min(Number(bloco.dataset.coluna), 4 - largura);
-      }
+      if (entrada) entrada.coluna = Number(bloco.dataset.coluna);
     }
     dadosUsuario.painel = { ...(dadosUsuario.painel || {}), [nome]: reordenadas };
     salvarLayout(nome, reordenadas);
+    mostrarToast('Organização salva.');
     anunciar(`Card ${tituloDoId(bloco.dataset.id)} movido para ${legendaPosicao(ordemIds.indexOf(bloco.dataset.id), ordemIds.length)}.`);
     const alca = e.target.closest('.arrastar-alca');
     if (alca && alca.hasPointerCapture(e.pointerId)) alca.releasePointerCapture(e.pointerId);
@@ -1712,14 +1685,14 @@ $('campoNaoPerturbeFim').addEventListener('change', () => {
     painel.insertBefore(bloco, origemProximoIrmao);
     if (origemColuna) {
       bloco.dataset.coluna = origemColuna;
-      bloco.style.gridColumn = origemColuna + ' / span ' + (bloco.dataset.largura || 1);
+      bloco.style.gridColumn = origemColuna + ' / span 1';
     }
     animarReflow(painel, antes);
   });
 
   painel.addEventListener('keydown', e => {
     const alca = e.target.closest('.arrastar-alca');
-    if (!alca || !modoPersonalizar) return;
+    if (!alca) return;
     if (e.key !== 'ArrowUp' && e.key !== 'ArrowDown') return;
     e.preventDefault();
     const bloco = alca.closest('.bloco');

@@ -312,9 +312,6 @@ button{ font-family:inherit; cursor:pointer; }
 .bloco-cab{ display:flex; align-items:center; justify-content:space-between; gap:8px; margin-bottom:12px; flex-wrap:wrap; }
 .bloco-titulo-grupo{ display:flex; align-items:center; gap:9px; min-width:0; }
 .bloco-controles{ display:flex; align-items:center; gap:2px; flex:0 0 auto; }
-@media (max-width:759px){
-  #painel.modo-personalizar .bloco-controles{ flex-wrap:wrap; justify-content:flex-end; }
-}
 .bloco-icone{
   width:2.1rem; height:2.1rem; border-radius:50%; flex:0 0 auto; background:rgba(255,255,255,.55);
   display:flex; align-items:center; justify-content:center; color:var(--cor-tinta, var(--lilas-tinta));
@@ -324,6 +321,8 @@ button{ font-family:inherit; cursor:pointer; }
 .bloco-titulo{ font-size:1.1rem; font-weight:700; color:var(--cor-tinta, var(--tinta)); }
 .bloco-sub{ margin:1px 0 0; font-size:.85rem; color:var(--tinta-suave); line-height:1.5; }
 
+/* Alça de arrastar e menu "…" ficam sempre visíveis — não existe mais um
+   modo de personalizar separado pra ativar. */
 .arrastar-alca{
   background:none; border:none; color:var(--tinta-suave); opacity:.55; width:1.7rem; height:1.7rem; min-width:28px; min-height:28px;
   border-radius:8px; display:flex; align-items:center; justify-content:center; flex:0 0 auto; cursor:grab; touch-action:none;
@@ -335,35 +334,40 @@ button{ font-family:inherit; cursor:pointer; }
   background:none; border:none; color:var(--tinta-suave); opacity:.55; width:1.7rem; height:1.7rem; min-width:28px; min-height:28px;
   border-radius:8px; display:flex; align-items:center; justify-content:center; flex:0 0 auto;
 }
-.bloco-opcoes-btn:hover{ opacity:1; background:rgba(255,255,255,.5); }
+.bloco-opcoes-btn:hover, .bloco-opcoes-btn[aria-expanded="true"]{ opacity:1; background:rgba(255,255,255,.5); }
 .bloco-opcoes-btn svg{ width:1em; height:1em; }
 
-/* Botões "mover pra cima/baixo": só aparecem no celular (no computador já dá
-   pra arrastar com mouse, ou usar setas do teclado com foco na alça) */
-.bloco-mover-btn{
-  display:none; background:none; border:none; color:var(--tinta-suave); opacity:.55;
-  width:1.7rem; height:1.7rem; min-width:28px; min-height:28px;
-  border-radius:8px; align-items:center; justify-content:center; flex:0 0 auto;
-}
-.bloco-mover-btn:hover{ opacity:1; background:rgba(255,255,255,.5); }
-.bloco-mover-btn svg{ width:1em; height:1em; }
-@media (max-width:759px){
-  #painel.modo-personalizar .bloco-mover-btn{ display:flex; }
-}
-
-/* Fora do modo de personalizar, o painel fica limpo: sem alça nem botão de opções */
-#painel:not(.modo-personalizar) .arrastar-alca,
-#painel:not(.modo-personalizar) .bloco-opcoes-btn{ display:none; }
-#painel.modo-personalizar .bloco{ outline:1.5px dashed var(--anel); outline-offset:3px; }
 .bloco-alvo-solta{ outline:2.5px dashed var(--lilas-tinta); outline-offset:3px; }
 
-/* No celular, área de toque mínima de 44x44px pros controles de edição */
+/* No celular, área de toque mínima de 44x44px pra alça e o menu */
 @media (max-width:759px){
-  #painel.modo-personalizar .arrastar-alca,
-  #painel.modo-personalizar .bloco-mover-btn,
-  #painel.modo-personalizar .bloco-opcoes-btn{
-    width:2.75rem; height:2.75rem; min-width:44px; min-height:44px;
-  }
+  .arrastar-alca, .bloco-opcoes-btn{ width:2.75rem; height:2.75rem; min-width:44px; min-height:44px; }
+}
+
+/* Menu compacto "…" de cada card: um único elemento reaproveitado e
+   reposicionado por JS perto do botão clicado. */
+.bloco-opcoes-menu{
+  position:fixed; z-index:60; min-width:12rem; background:var(--superficie); border:1px solid var(--linha);
+  border-radius:var(--raio-lg); box-shadow:var(--sombra); padding:.4rem; display:flex; flex-direction:column; gap:2px;
+}
+.bloco-opcoes-menu button{
+  display:flex; align-items:center; gap:.6em; background:none; border:none; text-align:left; width:100%;
+  padding:.6rem .7rem; min-height:40px; border-radius:9px; font-size:.85rem; font-weight:600; color:var(--tinta);
+  font-family:var(--fonte-corpo); cursor:pointer;
+}
+.bloco-opcoes-menu button:hover{ background:var(--creme); }
+.bloco-opcoes-menu button svg{ width:1.05em; height:1.05em; flex:0 0 auto; color:var(--tinta-suave); }
+
+/* Aviso temporário "Organização salva." — não ocupa espaço fixo no layout */
+.toast-painel{
+  position:fixed; left:50%; bottom:calc(24px + env(safe-area-inset-bottom)); transform:translate(-50%,10px);
+  background:var(--tinta); color:var(--superficie); font-size:.85rem; font-weight:600;
+  padding:.65rem 1.1rem; border-radius:var(--raio-pill); box-shadow:var(--sombra); z-index:80;
+  opacity:0; transition:opacity .2s ease, transform .2s ease; pointer-events:none;
+}
+.toast-painel.visivel{ opacity:1; transform:translate(-50%,0); }
+@media (max-width:759px){
+  .toast-painel{ bottom:calc(78px + env(safe-area-inset-bottom)); }
 }
 
 /* ---------- Barra da Rotina Falante ---------- */
@@ -373,17 +377,7 @@ button{ font-family:inherit; cursor:pointer; }
 }
 .barra-voz .barra-btn{ border-color:var(--anel); color:var(--lilas-tinta); }
 #pararFalarBtn{ border-color:var(--rosa-tinta); color:var(--rosa-tinta); }
-
-/* ---------- Barra de personalização ---------- */
-.barra-personalizar{
-  max-width:1240px; margin:0 auto 14px; padding:14px 16px; background:var(--lilas-fundo);
-  border-radius:var(--raio-lg); display:flex; flex-direction:column; gap:10px;
-}
-.barra-personalizar-texto{ margin:0; font-size:.82rem; font-weight:600; color:var(--lilas-tinta); }
-.barra-personalizar-acoes{ display:flex; flex-wrap:wrap; gap:8px; }
 .barra-btn{ width:auto; padding:.55rem 1rem; min-height:40px; font-size:.8rem; }
-.cards-ocultos{ border-top:1px solid rgba(106,74,160,.2); padding-top:10px; }
-.cards-ocultos-titulo{ margin:0 0 8px; font-size:.72rem; font-weight:700; text-transform:uppercase; letter-spacing:.04em; color:var(--lilas-tinta); }
 .cards-ocultos-lista{ display:flex; flex-wrap:wrap; gap:8px; }
 .card-oculto-chip{
   display:flex; align-items:center; gap:8px; background:var(--superficie); border-radius:99px;
@@ -632,8 +626,6 @@ button{ font-family:inherit; cursor:pointer; }
 .icone-escolha svg{ width:1.05rem; height:1.05rem; }
 .form-acoes{ display:flex; gap:10px; margin-top:24px; flex-wrap:wrap; }
 .form-acoes .botao{ min-width:6rem; }
-.bloco-posicao-acoes{ display:flex; gap:8px; margin-top:10px; flex-wrap:wrap; }
-.bloco-posicao-acoes .botao{ flex:1; min-width:9rem; }
 .girar-cima{ transform:rotate(-90deg); }
 .girar-baixo{ transform:rotate(90deg); }
 

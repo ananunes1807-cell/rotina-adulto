@@ -8,7 +8,7 @@
 <link rel="manifest" href="./manifest.webmanifest">
 <link rel="icon" href="./icon-192.png">
 <link rel="apple-touch-icon" href="./icon-192.png">
-<link rel="stylesheet" href="./styles.css?v=18">
+<link rel="stylesheet" href="./styles.css?v=19">
 </head>
 <body>
 <div id="anuncioPainel" class="sr-only" aria-live="polite" aria-atomic="true"></div>
@@ -133,6 +133,7 @@
     <button type="button" id="lerMeuDiaBtn" class="botao botao-secundario barra-btn" title="Ouvir um resumo do seu dia"><svg><use href="#i-livro"/></svg>Ler meu dia</button>
     <button type="button" id="oQueFacoBtn" class="botao botao-secundario barra-btn" title="Ouvir o que fazer agora"><svg><use href="#i-alvo"/></svg>O que faço agora?</button>
     <button type="button" id="repetirFalaBtn" class="botao botao-secundario barra-btn" title="Repetir a última mensagem falada"><svg><use href="#i-alto-falante"/></svg>Repetir</button>
+    <button type="button" id="adicionarCardBtn" class="botao botao-secundario barra-btn" title="Adicionar um card novo na aba Hoje"><svg><use href="#i-mais"/></svg>Adicionar card</button>
     <button type="button" id="pararFalarBtn" class="botao botao-secundario barra-btn" title="Parar a voz" hidden><svg><use href="#i-stop"/></svg>Parar de falar</button>
   </div>
 
@@ -148,20 +149,6 @@
 
   <!-- ===================== HOJE ===================== -->
   <div class="vista" id="vistaHoje" role="tabpanel">
-
-    <div id="barraPersonalizar" class="barra-personalizar" hidden>
-      <p class="barra-personalizar-texto">Modo de personalização ativo — arraste pela alça, use os botões de mover ou o menu "…" de cada card.</p>
-      <div class="barra-personalizar-acoes">
-        <button type="button" id="adicionarCardBtn" class="botao botao-secundario barra-btn"><svg><use href="#i-mais"/></svg>Adicionar card</button>
-        <button type="button" id="restaurarPadraoBtn" class="botao botao-secundario barra-btn">Restaurar padrão</button>
-        <button type="button" id="cancelarPersonalizarBtn" class="botao botao-secundario barra-btn">Cancelar alterações</button>
-        <button type="button" id="concluirPersonalizarBtn" class="botao botao-primario barra-btn">Salvar organização</button>
-      </div>
-      <div id="cardsOcultos" class="cards-ocultos" hidden>
-        <p class="cards-ocultos-titulo">Cards ocultos</p>
-        <div id="listaCardsOcultos" class="cards-ocultos-lista"></div>
-      </div>
-    </div>
 
     <div class="painel" id="painel">
 
@@ -376,10 +363,11 @@
           <div class="config-item-texto"><strong>Notificações</strong><span>Lembrete no aparelho, mesmo com o app fechado</span></div>
           <button class="botao botao-secundario" id="notifBtn" style="width:auto;padding:9px 16px;" type="button">Ativar</button>
         </div>
-        <div class="config-item">
-          <div class="config-item-texto"><strong>Personalizar painel</strong><span>Arraste, mova entre colunas, mude a largura, oculte ou crie cards na aba Hoje</span></div>
-          <button class="interruptor" id="interruptorPersonalizar" aria-pressed="false" aria-label="Ativar modo de personalizar painel" type="button"></button>
-        </div>
+      </div>
+
+      <div class="tela-cab" id="cardsOcultosCab" hidden><h2 class="tela-titulo">Cards ocultos</h2></div>
+      <div class="cartao-simples" id="cardsOcultos" hidden>
+        <div id="listaCardsOcultos" class="cards-ocultos-lista"></div>
       </div>
 
       <div class="tela-cab"><h2 class="tela-titulo">Rotina Falante</h2></div>
@@ -433,10 +421,10 @@
 
 </div>
 
-<!-- Diálogo: opções do card (título, cor, ícone, largura, ocultar/duplicar/excluir) -->
+<!-- Diálogo: editar card (título, cor, ícone) -->
 <dialog id="blocoDialog" class="dialogo">
   <form id="blocoForm" method="dialog" class="form-tarefa">
-    <h2 id="blocoDialogTitulo">Opções do card</h2>
+    <h2 id="blocoDialogTitulo">Editar card</h2>
     <label>
       Título
       <input type="text" id="campoBlocoTitulo" maxlength="40" placeholder="Nome do card">
@@ -457,36 +445,61 @@
       <legend>Ícone</legend>
       <div class="icone-escolha" id="iconeEscolhaBloco"></div>
     </fieldset>
-    <fieldset class="dias-fieldset" id="blocoDesktopFieldset">
-      <legend>Layout no computador</legend>
-      <label>
-        Largura
-        <select id="campoBlocoLargura">
-          <option value="1">1 coluna</option>
-          <option value="2">2 colunas</option>
-          <option value="3">Largura total</option>
-        </select>
-      </label>
-      <div class="bloco-posicao-acoes">
-        <button type="button" id="blocoColunaAntesBtn" class="botao botao-secundario barra-btn"><svg><use href="#i-seta-esq"/></svg>Coluna anterior</button>
-        <button type="button" id="blocoColunaDepoisBtn" class="botao botao-secundario barra-btn">Próxima coluna<svg><use href="#i-seta-dir"/></svg></button>
-      </div>
-    </fieldset>
-    <div class="bloco-posicao-acoes">
-      <button type="button" id="blocoMoverCimaBtn" class="botao botao-secundario barra-btn" aria-label="Mover card para cima"><svg class="girar-cima"><use href="#i-seta-dir"/></svg>Mover pra cima</button>
-      <button type="button" id="blocoMoverBaixoBtn" class="botao botao-secundario barra-btn" aria-label="Mover card para baixo"><svg class="girar-baixo"><use href="#i-seta-dir"/></svg>Mover pra baixo</button>
-    </div>
-    <div class="form-acoes">
-      <button type="button" id="ocultarBlocoBtn" class="botao botao-secundario"><svg><use href="#i-olho-fechado"/></svg></button>
-      <button type="button" id="duplicarBlocoBtn" class="botao botao-secundario"><svg><use href="#i-copiar"/></svg></button>
-      <button type="button" id="excluirBlocoBtn" class="botao botao-secundario" hidden>Excluir card</button>
-    </div>
     <div class="form-acoes">
       <button type="button" id="fecharBlocoDialog" class="botao botao-secundario">Fechar</button>
       <button type="submit" class="botao botao-primario">Salvar</button>
     </div>
   </form>
 </dialog>
+
+<!-- Diálogo: criar card novo (nome, cor, ícone, tipo de conteúdo) -->
+<dialog id="novoCardDialog" class="dialogo">
+  <form id="novoCardForm" method="dialog" class="form-tarefa">
+    <h2>Adicionar card</h2>
+    <label>
+      Nome
+      <input type="text" id="campoNovoCardNome" maxlength="40" placeholder="Nome do card" required>
+    </label>
+    <fieldset class="dias-fieldset">
+      <legend>Cor</legend>
+      <div class="cor-escolha" id="corEscolhaNovoCard">
+        <label data-cor="rosa"><input type="radio" name="corNovoCard" value="rosa" checked><span></span></label>
+        <label data-cor="lilas"><input type="radio" name="corNovoCard" value="lilas"><span></span></label>
+        <label data-cor="ceu"><input type="radio" name="corNovoCard" value="ceu"><span></span></label>
+        <label data-cor="menta"><input type="radio" name="corNovoCard" value="menta"><span></span></label>
+        <label data-cor="pessego"><input type="radio" name="corNovoCard" value="pessego"><span></span></label>
+        <label data-cor="areia"><input type="radio" name="corNovoCard" value="areia"><span></span></label>
+        <label data-cor="dourado"><input type="radio" name="corNovoCard" value="dourado"><span></span></label>
+      </div>
+    </fieldset>
+    <fieldset class="dias-fieldset">
+      <legend>Ícone</legend>
+      <div class="icone-escolha" id="iconeEscolhaNovoCard"></div>
+    </fieldset>
+    <fieldset class="dias-fieldset">
+      <legend>Tipo de conteúdo</legend>
+      <div class="cor-escolha" id="tipoEscolhaNovoCard">
+        <label class="linha-checkbox"><input type="radio" name="tipoNovoCard" value="checklist" checked> Checklist (com marcar concluído)</label>
+        <label class="linha-checkbox"><input type="radio" name="tipoNovoCard" value="lista"> Lista simples (sem marcar)</label>
+        <label class="linha-checkbox"><input type="radio" name="tipoNovoCard" value="texto"> Texto livre</label>
+      </div>
+    </fieldset>
+    <div class="form-acoes">
+      <button type="button" id="fecharNovoCardDialog" class="botao botao-secundario">Cancelar</button>
+      <button type="submit" class="botao botao-primario">Criar card</button>
+    </div>
+  </form>
+</dialog>
+
+<!-- Menu compacto "…" de cada card: reaproveitado pra qualquer card, reposicionado por JS -->
+<div class="bloco-opcoes-menu" id="blocoOpcoesMenu" hidden>
+  <button type="button" data-acao="editar"><svg><use href="#i-editar"/></svg>Editar card</button>
+  <button type="button" data-acao="cima"><svg class="girar-cima"><use href="#i-seta-dir"/></svg>Mover pra cima</button>
+  <button type="button" data-acao="baixo"><svg class="girar-baixo"><use href="#i-seta-dir"/></svg>Mover pra baixo</button>
+  <button type="button" data-acao="ocultar"><svg><use href="#i-olho-fechado"/></svg>Ocultar card</button>
+</div>
+
+<div id="toastPainel" class="toast-painel" role="status" hidden></div>
 
 <!-- Diálogo único: novo item / editar item -->
 <dialog id="itemDialog" class="dialogo dialogo-compacta">
