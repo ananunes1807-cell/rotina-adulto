@@ -51,6 +51,10 @@ Campos do documento:
     }
   ],
 
+  // A PARTIR DE 2026-07: concluidas/foco/mente/agua/refeicoes/humor/
+  // conquistasManuais só continuam aqui pros dias gravados ANTES dessa data
+  // (histórico antigo, nunca apagado nem movido). Gravação nova desses
+  // campos vai pra usuarios/{uid}/historico/AAAA-MM — ver seção abaixo.
   concluidas: {
     // chave = "AAAA-MM-DD", valor = lista de ids de itens concluídos naquele
     // dia — vale pra tarefa, compromisso, hábito e autocuidado, todos juntos
@@ -84,24 +88,29 @@ Campos do documento:
     naoPerturbe: { ativo: false, inicio: "22:00", fim: "07:00" }
   },
 
-  // Personalização do painel (modo "Personalizar painel" em Config.): ordem,
-  // visibilidade, cor/ícone/título e largura de cada card. A ordem do array
-  // É a ordem visual — arrastar um card reescreve esse array inteiro.
+  // Conteúdo/aparência de cada card (a POSIÇÃO fica em campos separados,
+  // ver painel.layoutDesktop/layoutMobile logo abaixo — arrastar um card ou
+  // mudar de coluna não mexe aqui, só em oculto).
   painel: {
     blocos: [
       {
         id: "foco",              // um dos 13 ids de sistema, ou "custom-<uuid>"
         tipo: "sistema",         // sistema | personalizado
         oculto: false,           // true = escondido do painel, mas não apagado
-        largura: "normal",       // normal | larga (larga ocupa a linha inteira)
         cor: null,                // null = cor padrão do card; ou um token (rosa|lilas|ceu|menta|pessego|areia|dourado)
         icone: null,              // null = ícone padrão; ou um id de símbolo (ex: "i-estrela")
         titulo: null               // null = título padrão; ou texto customizado
         // cards personalizados (tipo:"personalizado") também têm:
-        // itens: [ { id:"uuid", texto:"...", feita:false, horario:null } ]
-        // (horario opcional aqui também — todo dia nesse horário, sem repetição por dia da semana)
+        // conteudo: "checklist" | "lista" | "texto"
+        // itens: [ { id:"uuid", texto:"...", feita:false, horario:null } ]  — checklist/lista
+        // texto: "..."                                                      — só tipo "texto"
       }
-    ]
+    ],
+    // Posição de cada card, separada por dispositivo (computador tem 3
+    // colunas; celular é sempre 1 coluna). A ordem do array é a ordem
+    // visual — arrastar um card reescreve esse array inteiro.
+    layoutDesktop: [ { id: "foco", coluna: 1 } ],
+    layoutMobile: [ { id: "foco" } ]
   },
 
   pushTokens: [
@@ -133,6 +142,54 @@ Campos do documento:
 > que já existia (hábito e autocuidado sempre visíveis, fazer-depois sempre
 > na lista até apagar).
 
+## Histórico mensal (`usuarios/{uid}/historico/{AAAA-MM}`)
+
+O documento principal não tem limite de tamanho generoso (1 MiB no Firestore),
+e `concluidas`/`foco`/`mente`/`agua`/`refeicoes`/`humor`/`conquistasManuais`
+ganhavam uma entrada nova todo dia, pra sempre. A partir de 2026-07, esses
+sete campos passaram a gravar em documentos separados, um por mês:
+
+```txt
+usuarios/{uid}/historico/2026-07
+usuarios/{uid}/historico/2026-08
+```
+
+Cada documento tem a mesma forma dos campos equivalentes no documento
+principal, só que com as datas daquele mês:
+
+```js
+{
+  concluidas: { "2026-07-30": ["uuid-1"] },
+  foco:       { "2026-07-30": { texto: "...", feito: true } },
+  mente:      { "2026-07-30": "..." },
+  agua:       { "2026-07-30": 6 },
+  refeicoes:  { "2026-07-30": { cafe:true } },
+  humor:      { "2026-07-30": { humor:"calma" } },
+  conquistasManuais: { "2026-07-30": [{ id:"uuid", texto:"..." }] }
+}
+```
+
+**Compatibilidade**: o app lê os dois lugares e mescla (documento principal +
+mês atual + alguns meses vizinhos, pré-carregados) antes de mostrar qualquer
+coisa na tela — pro resto do código, continua parecendo um único
+`dadosUsuario.concluidas`/`.foco`/etc., como sempre foi. Nada do que já
+existia no documento principal foi apagado ou movido; só a gravação nova
+(a partir de agora) é que vai pro lugar novo. Não existe um passo de
+"migração" que reescreve dado antigo — é aditivo, sem risco pro que já tinha.
+
+**Uma limitação conhecida**: o app só escuta em tempo real o mês atual e
+pré-carrega (uma leitura só, sem tempo real) os 3 meses antes e os 3 meses
+depois. Se você navegar o calendário grande pra um mês fora dessa janela que
+já tenha dado gravado no formato novo (ou seja, a partir de uns 3 meses
+depois de 2026-07), aquele mês pode aparecer incompleto até recarregar a
+página. Dado antigo (de antes de 2026-07) não tem esse problema, porque
+continua morando inteiro no documento principal.
+
+**O campo `notificadas`** (controlado pelo Cloudflare Worker, não pelo app)
+tem o mesmo padrão de crescer por data e **não foi migrado** — isso exigiria
+mexer em `cloudflare-worker/worker.js`, um sistema separado que roda o cron
+de notificação; fica como um ajuste futuro, à parte.
+
 ### Por que `concluidas` é um mapa por data, e não um campo dentro do item
 
 Porque tarefas, compromissos, hábitos e itens de autocuidado são recorrentes
@@ -152,7 +209,9 @@ permite mandar a mesma notificação pros dois ao mesmo tempo.
 
 ## Regras do Firestore
 
-Só a dona da conta lê/escreve o próprio documento:
+Só a dona da conta lê/escreve o próprio documento (e sua subcoleção de
+histórico — regra de subcoleção precisa ser declarada à parte, não herda
+automaticamente da regra do documento pai):
 
 ```js
 rules_version = '2';
@@ -161,6 +220,10 @@ service cloud.firestore {
   match /databases/{database}/documents {
     match /usuarios/{uid} {
       allow read, write: if request.auth != null && request.auth.uid == uid;
+
+      match /historico/{mes} {
+        allow read, write: if request.auth != null && request.auth.uid == uid;
+      }
     }
   }
 }

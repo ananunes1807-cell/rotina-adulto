@@ -57,7 +57,8 @@ function painelPadrao() {
 }
 
 let uid = null;
-let dadosUsuario = null; // documento inteiro em memória
+let dadosRaiz = null;     // documento usuarios/{uid} cru, como veio do Firestore
+let dadosUsuario = null;  // dadosRaiz + histórico mensal mesclado — é isso que o resto do app lê
 let itemAtualChat = null;
 let itemEmEdicao = null;
 let diaDialogAtual = null;
@@ -209,19 +210,45 @@ async function garantirDocumento(user) {
 }
 
 let cancelarEscutaDados = null;
+let cancelarEscutaHistoricoAtual = null;
 function escutarDados() {
   // Nunca deixar mais de um listener ativo: se escutarDados() for chamado de
-  // novo (ex: onAuthStateChanged disparando outra vez), cancela o anterior.
+  // novo (ex: onAuthStateChanged disparando outra vez), cancela os anteriores.
   if (cancelarEscutaDados) { cancelarEscutaDados(); cancelarEscutaDados = null; }
+  if (cancelarEscutaHistoricoAtual) { cancelarEscutaHistoricoAtual(); cancelarEscutaHistoricoAtual = null; }
+  historicoPorMes.clear();
+
   const ref = doc(db, 'usuarios', uid);
   cancelarEscutaDados = onSnapshot(ref, snap => {
-    dadosUsuario = snap.data();
+    dadosRaiz = snap.data();
     mostrarAvisoConexao(false);
+    remontarDadosMesclados();
     if (dadosUsuario) renderizarTudo();
   }, erro => {
     console.error('Erro ao escutar dados do Firestore:', erro);
     mostrarAvisoConexao(true);
   });
+
+  // Histórico do mês atual (concluidas/foco/mente/agua/refeicoes/humor/
+  // conquistas) mora num documento separado, pra não fazer o documento
+  // principal crescer pra sempre — ver escutarHistorico().
+  const mesAtual = mesAtualChave();
+  const refHist = doc(db, 'usuarios', uid, 'historico', mesAtual);
+  cancelarEscutaHistoricoAtual = onSnapshot(refHist, snap => {
+    historicoPorMes.set(mesAtual, snap.exists() ? snap.data() : null);
+    remontarDadosMesclados();
+    if (dadosUsuario) renderizarTudo();
+  }, erro => {
+    console.error('Erro ao escutar histórico do mês atual:', erro);
+  });
+
+  // Meses vizinhos: só uma leitura pontual (sem listener), pra navegar o
+  // calendário pra trás/frente continuar funcionando sem precisar deixar a
+  // renderização inteira assíncrona.
+  for (let deslocamento = -3; deslocamento <= 3; deslocamento++) {
+    if (deslocamento === 0) continue;
+    precarregarMesHistorico(deslocarMes(mesAtual, deslocamento));
+  }
 }
 
 function mostrarAvisoConexao(mostrar) {
@@ -239,6 +266,81 @@ function hojeISO() { return dataISO(new Date()); }
 function diaSemanaDe(dataStr) {
   const [ano, mes, dia] = dataStr.split('-').map(Number);
   return new Date(ano, mes - 1, dia).getDay();
+}
+
+// ---------- Histórico mensal ----------
+// concluidas/foco/mente/agua/refeicoes/humor/conquistasManuais cresciam pra
+// sempre dentro de usuarios/{uid}. A partir de agora, gravação nova desses
+// campos vai pra usuarios/{uid}/historico/AAAA-MM (um documento por mês) —
+// o que já existe no documento principal fica exatamente onde está, nunca é
+// apagado nem movido; só passa a não crescer mais.
+const CAMPOS_HISTORICO = ['concluidas', 'foco', 'mente', 'agua', 'refeicoes', 'humor', 'conquistasManuais'];
+const historicoPorMes = new Map(); // 'AAAA-MM' -> dados do documento historico daquele mês (ou null)
+function chaveMes(dataStr) { return dataStr.slice(0, 7); }
+function mesAtualChave() { return chaveMes(hojeISO()); }
+function deslocarMes(mesKey, deslocamento) {
+  const [ano, mes] = mesKey.split('-').map(Number);
+  const d = new Date(ano, mes - 1 + deslocamento, 1);
+  return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}`;
+}
+// Reconstrói dadosUsuario = dadosRaiz + histórico mensal já carregado. Fica
+// como campo espalhado (não aninhado) pra todo o resto do app continuar
+// lendo dadosUsuario.concluidas / .foco / .agua / etc. exatamente como antes.
+function remontarDadosMesclados() {
+  if (!dadosRaiz) { dadosUsuario = null; return; }
+  const mesclado = { ...dadosRaiz };
+  CAMPOS_HISTORICO.forEach(campo => {
+    let combinado = { ...(dadosRaiz[campo] || {}) };
+    historicoPorMes.forEach(docMes => {
+      if (docMes && docMes[campo]) combinado = { ...combinado, ...docMes[campo] };
+    });
+    mesclado[campo] = combinado;
+  });
+  dadosUsuario = mesclado;
+}
+async function precarregarMesHistorico(mesKey) {
+  if (historicoPorMes.has(mesKey)) return;
+  try {
+    const snap = await getDoc(doc(db, 'usuarios', uid, 'historico', mesKey));
+    historicoPorMes.set(mesKey, snap.exists() ? snap.data() : null);
+    remontarDadosMesclados();
+    if (dadosUsuario) renderizarAbaVisivel();
+  } catch (erro) {
+    console.error('Erro ao pré-carregar histórico de ' + mesKey + ':', erro);
+  }
+}
+// Grava só a data que mudou (não o mês inteiro) no documento do mês certo, e
+// atualiza a mescla local na hora — a tela não espera a viagem ao Firestore.
+async function salvarHistoricoDia(campo, data, valor, opcoes = {}) {
+  const { aviso = true } = opcoes;
+  const mesKey = chaveMes(data);
+  // historicoPorMes é um Map comum, não uma cache do Firestore — diferente
+  // do documento principal, ele NÃO reverte sozinho se a gravação falhar.
+  // Por isso guarda o estado de antes, pra poder desfazer manualmente.
+  const docAntes = historicoPorMes.get(mesKey) ?? null;
+  const docDepois = { ...(docAntes || {}) };
+  docDepois[campo] = { ...(docDepois[campo] || {}), [data]: valor };
+  historicoPorMes.set(mesKey, docDepois);
+  remontarDadosMesclados();
+  renderizarTudo();
+  if (aviso) mostrarToast('Salvando…');
+  try {
+    const ref = doc(db, 'usuarios', uid, 'historico', mesKey);
+    // Chave com notação de ponto: grava só essa data dentro do campo, sem
+    // arriscar substituir o mês inteiro (o que aconteceria se mandasse um
+    // objeto aninhado — merge:true só funde de verdade com dot notation).
+    await setDoc(ref, { [`${campo}.${data}`]: valor }, { merge: true });
+    if (aviso) mostrarToast('Salvo');
+  } catch (erro) {
+    console.error('Erro ao salvar histórico:', erro);
+    // Gravação falhou de verdade: desfaz a atualização otimista, senão a
+    // tela continuaria mostrando algo marcado que não foi salvo.
+    if (docAntes) historicoPorMes.set(mesKey, docAntes); else historicoPorMes.delete(mesKey);
+    remontarDadosMesclados();
+    renderizarTudo();
+    mostrarToast('Não foi possível salvar. Verifique sua conexão e tente novamente.');
+    throw erro;
+  }
 }
 
 // ---------- Itens (tarefa / compromisso / depois / habito / autocuidado) ----------
@@ -280,11 +382,9 @@ async function marcarConcluida(id, valor, data = hojeISO()) {
     mostrarToast('Você ainda não pode concluir um item de uma data futura.');
     return;
   }
-  const mapa = { ...(dadosUsuario.concluidas || {}) };
-  const lista = new Set(mapa[data] || []);
+  const lista = new Set((dadosUsuario.concluidas || {})[data] || []);
   if (valor) lista.add(id); else lista.delete(id);
-  mapa[data] = [...lista];
-  await salvarDados({ concluidas: mapa }, { aviso: false });
+  await salvarHistoricoDia('concluidas', data, [...lista], { aviso: false });
   if (valor && data === hojeISO() && prefsVoz().falarProximoItem) falarProximoAposConcluir(id);
 }
 async function excluirItem(id) {
@@ -404,17 +504,14 @@ $('focoInput').addEventListener('input', () => {
   clearTimeout(focoDebounce);
   focoDebounce = setTimeout(async () => {
     const hoje = hojeISO();
-    const mapa = { ...(dadosUsuario.foco || {}) };
-    mapa[hoje] = { ...(mapa[hoje] || {}), texto: $('focoInput').value };
-    await salvarDados({ foco: mapa }, { aviso: false });
+    const atual = (dadosUsuario.foco || {})[hoje] || {};
+    await salvarHistoricoDia('foco', hoje, { ...atual, texto: $('focoInput').value }, { aviso: false });
   }, 600);
 });
 $('focoCheck').addEventListener('click', async () => {
   const hoje = hojeISO();
-  const mapa = { ...(dadosUsuario.foco || {}) };
-  const atual = mapa[hoje] || { texto: '', feito: false };
-  mapa[hoje] = { ...atual, feito: !atual.feito };
-  await salvarDados({ foco: mapa }, { aviso: false });
+  const atual = (dadosUsuario.foco || {})[hoje] || { texto: '', feito: false };
+  await salvarHistoricoDia('foco', hoje, { ...atual, feito: !atual.feito }, { aviso: false });
 });
 
 // ---------- Prioridades / Agenda / Tarefas / Fazer depois ----------
@@ -493,9 +590,7 @@ let menteDebounce;
 $('menteTexto').addEventListener('input', () => {
   clearTimeout(menteDebounce);
   menteDebounce = setTimeout(async () => {
-    const mapa = { ...(dadosUsuario.mente || {}) };
-    mapa[hojeISO()] = $('menteTexto').value;
-    await salvarDados({ mente: mapa }, { aviso: false });
+    await salvarHistoricoDia('mente', hojeISO(), $('menteTexto').value, { aviso: false });
   }, 600);
 });
 
@@ -582,9 +677,7 @@ function renderizarAgua() {
   $('aguaTexto').textContent = copos;
 }
 async function definirAgua(n) {
-  const mapa = { ...(dadosUsuario.agua || {}) };
-  mapa[hojeISO()] = n;
-  await salvarDados({ agua: mapa }, { aviso: false });
+  await salvarHistoricoDia('agua', hojeISO(), n, { aviso: false });
 }
 
 // ---------- Refeições ----------
@@ -600,9 +693,8 @@ function renderizarRefeicoes() {
 }
 async function definirRefeicao(chave, valor) {
   const hoje = hojeISO();
-  const mapa = { ...(dadosUsuario.refeicoes || {}) };
-  mapa[hoje] = { ...(mapa[hoje] || {}), [chave]: valor };
-  await salvarDados({ refeicoes: mapa }, { aviso: false });
+  const atual = (dadosUsuario.refeicoes || {})[hoje] || {};
+  await salvarHistoricoDia('refeicoes', hoje, { ...atual, [chave]: valor }, { aviso: false });
 }
 
 // ---------- Humor e energia ----------
@@ -619,9 +711,8 @@ function renderizarHumor() {
 }
 async function definirHumor(campo, valor) {
   const hoje = hojeISO();
-  const mapa = { ...(dadosUsuario.humor || {}) };
-  mapa[hoje] = { ...(mapa[hoje] || {}), [campo]: valor };
-  await salvarDados({ humor: mapa }, { aviso: false });
+  const atual = (dadosUsuario.humor || {})[hoje] || {};
+  await salvarHistoricoDia('humor', hoje, { ...atual, [campo]: valor }, { aviso: false });
 }
 
 // ---------- Não esquecer ----------
@@ -702,16 +793,14 @@ $('formConquista').addEventListener('submit', async e => {
   const texto = $('campoConquista').value.trim();
   if (!texto) return;
   const hoje = hojeISO();
-  const mapa = { ...(dadosUsuario.conquistasManuais || {}) };
-  mapa[hoje] = [...(mapa[hoje] || []), { id: crypto.randomUUID(), texto }];
-  await salvarDados({ conquistasManuais: mapa });
+  const atual = (dadosUsuario.conquistasManuais || {})[hoje] || [];
+  await salvarHistoricoDia('conquistasManuais', hoje, [...atual, { id: crypto.randomUUID(), texto }]);
   $('campoConquista').value = '';
 });
 async function excluirConquistaManual(id) {
   const hoje = hojeISO();
-  const mapa = { ...(dadosUsuario.conquistasManuais || {}) };
-  mapa[hoje] = (mapa[hoje] || []).filter(c => c.id !== id);
-  await salvarDados({ conquistasManuais: mapa }, { aviso: false });
+  const atual = (dadosUsuario.conquistasManuais || {})[hoje] || [];
+  await salvarHistoricoDia('conquistasManuais', hoje, atual.filter(c => c.id !== id), { aviso: false });
 }
 
 // ---------- Rotina (gestão de todos os itens) ----------
@@ -1177,7 +1266,8 @@ function atualizarBloco(id, mudancas) {
 // não têm mais um botão "Salvar" dedicado (ocultar, mostrar de novo, editar).
 async function atualizarBlocoComAviso(id, mudancas, aviso) {
   const blocos = blocosAtuais().map(b => b.id === id ? { ...b, ...mudancas } : b);
-  dadosUsuario.painel = { ...(dadosUsuario.painel || {}), blocos };
+  dadosRaiz.painel = { ...(dadosRaiz.painel || {}), blocos };
+  remontarDadosMesclados();
   aplicarPersonalizacaoPainel();
   await salvarDados({ painel: { blocos } }, { aviso: false });
   if (aviso) mostrarToast(aviso);
@@ -1297,7 +1387,8 @@ function moverBlocoOrdem(id, delta) {
   if (i < 0 || j < 0 || j >= entradas.length) return;
   const [item] = entradas.splice(i, 1);
   entradas.splice(j, 0, item);
-  dadosUsuario.painel = { ...(dadosUsuario.painel || {}), [nome]: entradas };
+  dadosRaiz.painel = { ...(dadosRaiz.painel || {}), [nome]: entradas };
+  remontarDadosMesclados();
   aplicarPersonalizacaoPainel();
   salvarLayout(nome, entradas);
   mostrarToast('Organização salva.');
@@ -1600,7 +1691,8 @@ $('novoCardForm').addEventListener('submit', async () => {
   const novo = { id: 'custom-' + crypto.randomUUID(), tipo: 'personalizado', oculto: false, cor, icone, titulo: nome, conteudo };
   if (conteudo === 'texto') novo.texto = ''; else novo.itens = [];
   const blocos = [...blocosAtuais(), novo];
-  dadosUsuario.painel = { ...(dadosUsuario.painel || {}), blocos };
+  dadosRaiz.painel = { ...(dadosRaiz.painel || {}), blocos };
+  remontarDadosMesclados();
   aplicarPersonalizacaoPainel();
   await salvarDados({ painel: { blocos } }, { aviso: false });
   mostrarToast('Card criado — arraste pra posição que preferir.');
@@ -1728,7 +1820,8 @@ $('campoNaoPerturbeFim').addEventListener('change', () => {
       const entrada = reordenadas.find(en => en.id === bloco.dataset.id);
       if (entrada) entrada.coluna = Number(bloco.dataset.coluna);
     }
-    dadosUsuario.painel = { ...(dadosUsuario.painel || {}), [nome]: reordenadas };
+    dadosRaiz.painel = { ...(dadosRaiz.painel || {}), [nome]: reordenadas };
+    remontarDadosMesclados();
     salvarLayout(nome, reordenadas);
     mostrarToast('Organização salva.');
     anunciar(`Card ${tituloDoId(bloco.dataset.id)} movido para ${legendaPosicao(ordemIds.indexOf(bloco.dataset.id), ordemIds.length)}.`);
