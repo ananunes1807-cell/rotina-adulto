@@ -437,6 +437,7 @@ button{ font-family:inherit; cursor:pointer; }
 }
 .marca-check svg{ width:.75rem; height:.75rem; color:#fff; opacity:0; transform:scale(.5); }
 .item.feita .marca-check{ background:var(--cor-tinta, var(--lilas-tinta)); border-color:var(--cor-tinta, var(--lilas-tinta)); }
+.marca-check:disabled{ opacity:.35; cursor:not-allowed; }
 .item.feita .marca-check svg{ opacity:1; transform:scale(1); animation:marca .38s cubic-bezier(.34,1.56,.64,1); }
 @keyframes marca{ from{ opacity:0; transform:scale(.3) rotate(-12deg); } to{ opacity:1; transform:scale(1) rotate(0); } }
 .patinha{ position:absolute; top:-7px; right:-6px; width:.95rem; height:.95rem; color:var(--dourado-tinta); opacity:0; transform:scale(.4) rotate(-15deg); }

@@ -137,6 +137,9 @@ document.querySelectorAll('.aba').forEach(botao => {
     document.querySelectorAll('.aba').forEach(b => b.setAttribute('aria-selected', 'false'));
     botao.setAttribute('aria-selected', 'true');
     document.querySelectorAll('.vista').forEach(v => { v.hidden = v.id !== botao.dataset.alvo; });
+    // A aba que acabou de aparecer pode não ter sido renderizada enquanto
+    // estava escondida (ver renderizarAbaVisivel) — renderiza agora que apareceu.
+    if (dadosUsuario) renderizarAbaVisivel();
   });
 });
 
@@ -205,13 +208,28 @@ async function garantirDocumento(user) {
   }
 }
 
+let cancelarEscutaDados = null;
 function escutarDados() {
+  // Nunca deixar mais de um listener ativo: se escutarDados() for chamado de
+  // novo (ex: onAuthStateChanged disparando outra vez), cancela o anterior.
+  if (cancelarEscutaDados) { cancelarEscutaDados(); cancelarEscutaDados = null; }
   const ref = doc(db, 'usuarios', uid);
-  onSnapshot(ref, snap => {
+  cancelarEscutaDados = onSnapshot(ref, snap => {
     dadosUsuario = snap.data();
+    mostrarAvisoConexao(false);
     if (dadosUsuario) renderizarTudo();
+  }, erro => {
+    console.error('Erro ao escutar dados do Firestore:', erro);
+    mostrarAvisoConexao(true);
   });
 }
+
+function mostrarAvisoConexao(mostrar) {
+  const el = $('conexaoAviso');
+  if (el) el.hidden = !mostrar;
+}
+window.addEventListener('offline', () => mostrarAvisoConexao(true));
+window.addEventListener('online', () => mostrarAvisoConexao(false));
 
 // ---------- Data / hora ----------
 function dataISO(d) {
@@ -256,26 +274,33 @@ function estaConcluida(id, data = hojeISO()) {
   return ((dadosUsuario.concluidas || {})[data] || []).includes(id);
 }
 async function marcarConcluida(id, valor, data = hojeISO()) {
+  // Não deixa marcar (tarefa, hábito, autocuidado/medicação) como feito numa
+  // data futura — só planejar/visualizar é permitido. Desmarcar continua ok.
+  if (valor && data > hojeISO()) {
+    mostrarToast('Você ainda não pode concluir um item de uma data futura.');
+    return;
+  }
   const mapa = { ...(dadosUsuario.concluidas || {}) };
   const lista = new Set(mapa[data] || []);
   if (valor) lista.add(id); else lista.delete(id);
   mapa[data] = [...lista];
-  await updateDoc(doc(db, 'usuarios', uid), { concluidas: mapa });
+  await salvarDados({ concluidas: mapa }, { aviso: false });
   if (valor && data === hojeISO() && prefsVoz().falarProximoItem) falarProximoAposConcluir(id);
 }
 async function excluirItem(id) {
   if (!confirm('Excluir este item? Essa ação não pode ser desfeita.')) return;
   const itens = (dadosUsuario.itens || []).filter(i => i.id !== id);
-  await updateDoc(doc(db, 'usuarios', uid), { itens });
+  await salvarDados({ itens });
 }
 
 function criarLinhaItem(item, { data = hojeISO(), comAcoes = false, comChat = false, semCheck = false, comFalar = true } = {}) {
   const feita = !semCheck && estaConcluida(item.id, data);
+  const futura = !feita && data > hojeISO();
   const li = document.createElement('li');
   li.className = 'item' + (feita ? ' feita' : '');
   const mostrarAcoes = comAcoes || comFalar;
   li.innerHTML = `
-    ${semCheck ? '' : '<button class="marca-check" aria-label="Marcar concluída"><svg><use href="#i-check"/></svg><svg class="patinha"><use href="#i-pata"/></svg></button>'}
+    ${semCheck ? '' : `<button class="marca-check" aria-label="Marcar concluída"${futura ? ' disabled title="Você ainda não pode concluir um item de uma data futura."' : ''}><svg><use href="#i-check"/></svg><svg class="patinha"><use href="#i-pata"/></svg></button>`}
     <div class="item-corpo"><p class="item-nome"></p><div class="item-meta"></div></div>
     ${mostrarAcoes ? `<div class="item-acoes">
       ${comFalar ? '<button type="button" class="item-acao item-falar" aria-label="Ouvir este item em voz alta" title="Ouvir"><svg><use href="#i-alto-falante"/></svg></button>' : ''}
@@ -309,8 +334,29 @@ function criarLinhaItem(item, { data = hojeISO(), comAcoes = false, comChat = fa
 }
 
 // ---------- Render geral ----------
+// renderizarTudo() cuida só do que fica visível o tempo todo (cabeçalho,
+// mini-calendário) e delega o resto pra renderizarAbaVisivel(), que só
+// renderiza a aba que está realmente aberta na tela — evita, por exemplo,
+// remontar o calendário grande (30+ botões) quando quem mudou foi um
+// checkbox na aba Hoje.
 function renderizarTudo() {
   renderizarCabecalho();
+  montarCalendarioMini();
+  renderizarAbaVisivel();
+}
+
+function renderizarAbaVisivel() {
+  if (!$('vistaHoje').hidden) renderizarAbaHoje();
+  if (!$('vistaRotina').hidden) renderizarRotina();
+  if (!$('vistaCalendario').hidden) montarCalendarioGrande('calGrande', null, 'agenda', true);
+  if (!$('vistaProgresso').hidden) renderizarAbaProgresso();
+  if (!$('vistaConfig').hidden) sincronizarUiVoz();
+  // O diálogo de um dia específico é um modal por cima de qualquer aba —
+  // se estiver aberto, precisa continuar em dia com os dados mais recentes.
+  if ($('diaDialog').open && diaDialogAtual) abrirDiaDialog(diaDialogAtual);
+}
+
+function renderizarAbaHoje() {
   renderizarFoco();
   renderizarPrioridades();
   renderizarAgenda();
@@ -324,15 +370,13 @@ function renderizarTudo() {
   renderizarHumor();
   renderizarLembretes();
   renderizarConquistasHoje();
-  renderizarRotina();
   aplicarPersonalizacaoPainel();
-  montarCalendarioMini();
-  montarCalendarioGrande('calGrande', null, 'agenda', true);
+}
+
+function renderizarAbaProgresso() {
   renderizarProgressoConquistas();
   renderizarHabitos('listaHabitosProgresso', 'habitosProgressoVazio', false);
   renderizarProgressoDia();
-  sincronizarUiVoz();
-  if ($('diaDialog').open && diaDialogAtual) abrirDiaDialog(diaDialogAtual);
 }
 
 function renderizarCabecalho() {
@@ -362,7 +406,7 @@ $('focoInput').addEventListener('input', () => {
     const hoje = hojeISO();
     const mapa = { ...(dadosUsuario.foco || {}) };
     mapa[hoje] = { ...(mapa[hoje] || {}), texto: $('focoInput').value };
-    await updateDoc(doc(db, 'usuarios', uid), { foco: mapa });
+    await salvarDados({ foco: mapa }, { aviso: false });
   }, 600);
 });
 $('focoCheck').addEventListener('click', async () => {
@@ -370,7 +414,7 @@ $('focoCheck').addEventListener('click', async () => {
   const mapa = { ...(dadosUsuario.foco || {}) };
   const atual = mapa[hoje] || { texto: '', feito: false };
   mapa[hoje] = { ...atual, feito: !atual.feito };
-  await updateDoc(doc(db, 'usuarios', uid), { foco: mapa });
+  await salvarDados({ foco: mapa }, { aviso: false });
 });
 
 // ---------- Prioridades / Agenda / Tarefas / Fazer depois ----------
@@ -451,7 +495,7 @@ $('menteTexto').addEventListener('input', () => {
   menteDebounce = setTimeout(async () => {
     const mapa = { ...(dadosUsuario.mente || {}) };
     mapa[hojeISO()] = $('menteTexto').value;
-    await updateDoc(doc(db, 'usuarios', uid), { mente: mapa });
+    await salvarDados({ mente: mapa }, { aviso: false });
   }, 600);
 });
 
@@ -540,7 +584,7 @@ function renderizarAgua() {
 async function definirAgua(n) {
   const mapa = { ...(dadosUsuario.agua || {}) };
   mapa[hojeISO()] = n;
-  await updateDoc(doc(db, 'usuarios', uid), { agua: mapa });
+  await salvarDados({ agua: mapa }, { aviso: false });
 }
 
 // ---------- Refeições ----------
@@ -558,7 +602,7 @@ async function definirRefeicao(chave, valor) {
   const hoje = hojeISO();
   const mapa = { ...(dadosUsuario.refeicoes || {}) };
   mapa[hoje] = { ...(mapa[hoje] || {}), [chave]: valor };
-  await updateDoc(doc(db, 'usuarios', uid), { refeicoes: mapa });
+  await salvarDados({ refeicoes: mapa }, { aviso: false });
 }
 
 // ---------- Humor e energia ----------
@@ -577,7 +621,7 @@ async function definirHumor(campo, valor) {
   const hoje = hojeISO();
   const mapa = { ...(dadosUsuario.humor || {}) };
   mapa[hoje] = { ...(mapa[hoje] || {}), [campo]: valor };
-  await updateDoc(doc(db, 'usuarios', uid), { humor: mapa });
+  await salvarDados({ humor: mapa }, { aviso: false });
 }
 
 // ---------- Não esquecer ----------
@@ -601,13 +645,13 @@ $('formLembrete').addEventListener('submit', async e => {
   if (!texto) return;
   const horario = $('campoLembreteHorario').value || null;
   const lembretes = [...(dadosUsuario.lembretes || []), { id: crypto.randomUUID(), texto, horario, criadoEm: new Date().toISOString() }];
-  await updateDoc(doc(db, 'usuarios', uid), { lembretes });
+  await salvarDados({ lembretes });
   $('campoLembrete').value = '';
   $('campoLembreteHorario').value = '';
 });
 async function excluirLembrete(id) {
   const lembretes = (dadosUsuario.lembretes || []).filter(l => l.id !== id);
-  await updateDoc(doc(db, 'usuarios', uid), { lembretes });
+  await salvarDados({ lembretes });
 }
 
 // ---------- Mascote ----------
@@ -660,14 +704,14 @@ $('formConquista').addEventListener('submit', async e => {
   const hoje = hojeISO();
   const mapa = { ...(dadosUsuario.conquistasManuais || {}) };
   mapa[hoje] = [...(mapa[hoje] || []), { id: crypto.randomUUID(), texto }];
-  await updateDoc(doc(db, 'usuarios', uid), { conquistasManuais: mapa });
+  await salvarDados({ conquistasManuais: mapa });
   $('campoConquista').value = '';
 });
 async function excluirConquistaManual(id) {
   const hoje = hojeISO();
   const mapa = { ...(dadosUsuario.conquistasManuais || {}) };
   mapa[hoje] = (mapa[hoje] || []).filter(c => c.id !== id);
-  await updateDoc(doc(db, 'usuarios', uid), { conquistasManuais: mapa });
+  await salvarDados({ conquistasManuais: mapa }, { aviso: false });
 }
 
 // ---------- Rotina (gestão de todos os itens) ----------
@@ -752,18 +796,20 @@ function montarCalendarioGrande(alvoId, tituloId, modo, comNavegacao = false) {
     const btnAnt = document.createElement('button');
     btnAnt.type = 'button'; btnAnt.className = 'cal-nav-btn'; btnAnt.setAttribute('aria-label', 'Mês anterior');
     btnAnt.innerHTML = '<svg><use href="#i-seta-esq"/></svg>';
-    btnAnt.addEventListener('click', () => { mesExibidoOffset--; renderizarTudo(); });
+    // Trocar de mês só remonta este calendário — não renderizarTudo(), que
+    // mexeria em telas que nem estão visíveis.
+    btnAnt.addEventListener('click', () => { mesExibidoOffset--; montarCalendarioGrande(alvoId, tituloId, modo, comNavegacao); });
     const h3 = document.createElement('h3'); h3.className = 'cal-mes-titulo'; h3.textContent = tituloFormatado;
     const btnProx = document.createElement('button');
     btnProx.type = 'button'; btnProx.className = 'cal-nav-btn'; btnProx.setAttribute('aria-label', 'Próximo mês');
     btnProx.innerHTML = '<svg><use href="#i-seta-dir"/></svg>';
-    btnProx.addEventListener('click', () => { mesExibidoOffset++; renderizarTudo(); });
+    btnProx.addEventListener('click', () => { mesExibidoOffset++; montarCalendarioGrande(alvoId, tituloId, modo, comNavegacao); });
     nav.append(btnAnt, h3, btnProx);
     el.appendChild(nav);
     if (mesExibidoOffset !== 0) {
       const btnHoje = document.createElement('button');
       btnHoje.type = 'button'; btnHoje.className = 'cal-nav-hoje'; btnHoje.textContent = 'Voltar pra hoje';
-      btnHoje.addEventListener('click', () => { mesExibidoOffset = 0; renderizarTudo(); });
+      btnHoje.addEventListener('click', () => { mesExibidoOffset = 0; montarCalendarioGrande(alvoId, tituloId, modo, comNavegacao); });
       el.appendChild(btnHoje);
     }
   }
@@ -896,7 +942,7 @@ $('excluirItem').addEventListener('click', async () => {
   if (!itemEmEdicao) return;
   if (!confirm('Excluir este item? Essa ação não pode ser desfeita.')) return;
   const itens = (dadosUsuario.itens || []).filter(i => i.id !== itemEmEdicao.id);
-  await updateDoc(doc(db, 'usuarios', uid), { itens });
+  await salvarDados({ itens });
   $('itemDialog').close();
   itemEmEdicao = null;
 });
@@ -945,7 +991,7 @@ $('itemForm').addEventListener('submit', async e => {
       ordem: (dadosUsuario.itens || []).length, criadoEm: new Date().toISOString()
     }];
   }
-  await updateDoc(doc(db, 'usuarios', uid), { itens });
+  await salvarDados({ itens });
   itemEmEdicao = null;
 });
 
@@ -1124,7 +1170,7 @@ function encontrarBloco(id) {
 }
 function atualizarBloco(id, mudancas) {
   const blocos = blocosAtuais().map(b => b.id === id ? { ...b, ...mudancas } : b);
-  return updateDoc(doc(db, 'usuarios', uid), { painel: { blocos } });
+  return salvarDados({ painel: { blocos } }, { aviso: false });
 }
 // Como atualizarBloco, mas atualiza a tela na hora (sem esperar o Firestore
 // ir e voltar) e mostra o aviso "Organização salva." — usado nas ações que
@@ -1133,7 +1179,7 @@ async function atualizarBlocoComAviso(id, mudancas, aviso) {
   const blocos = blocosAtuais().map(b => b.id === id ? { ...b, ...mudancas } : b);
   dadosUsuario.painel = { ...(dadosUsuario.painel || {}), blocos };
   aplicarPersonalizacaoPainel();
-  await updateDoc(doc(db, 'usuarios', uid), { painel: { blocos } });
+  await salvarDados({ painel: { blocos } }, { aviso: false });
   if (aviso) mostrarToast(aviso);
 }
 function tituloDoId(id) {
@@ -1156,6 +1202,24 @@ function mostrarToast(texto) {
     el.classList.remove('visivel');
     setTimeout(() => { el.hidden = true; }, 220);
   }, 1800);
+}
+
+// ---------- Gravação central (usada por toda gravação iniciada pela pessoa) ----------
+// aviso:true mostra "Salvando…"/"Salvo" (formulários, adicionar/excluir).
+// aviso:false pula esse aviso pra não spammar em toques rápidos (checkboxes,
+// texto com debounce) — mas o erro sempre aparece, nos dois casos, porque é
+// a parte que realmente importa pra não deixar algo marcado sem ter salvo.
+async function salvarDados(campos, opcoes = {}) {
+  const { aviso = true } = opcoes;
+  if (aviso) mostrarToast('Salvando…');
+  try {
+    await updateDoc(doc(db, 'usuarios', uid), campos);
+    if (aviso) mostrarToast('Salvo');
+  } catch (erro) {
+    console.error('Erro ao salvar no Firestore:', erro);
+    mostrarToast('Não foi possível salvar. Verifique sua conexão e tente novamente.');
+    throw erro;
+  }
 }
 
 // ---------- Layout do painel: coluna/ordem separados por dispositivo ----------
@@ -1538,14 +1602,14 @@ $('novoCardForm').addEventListener('submit', async () => {
   const blocos = [...blocosAtuais(), novo];
   dadosUsuario.painel = { ...(dadosUsuario.painel || {}), blocos };
   aplicarPersonalizacaoPainel();
-  await updateDoc(doc(db, 'usuarios', uid), { painel: { blocos } });
+  await salvarDados({ painel: { blocos } }, { aviso: false });
   mostrarToast('Card criado — arraste pra posição que preferir.');
 });
 
 // ---------- Config da Rotina Falante ----------
 function salvarPrefsVoz(mudancas) {
   const novo = { ...prefsVoz(), ...mudancas };
-  return updateDoc(doc(db, 'usuarios', uid), { voz: novo });
+  return salvarDados({ voz: novo }, { aviso: false });
 }
 function sincronizarUiVoz() {
   const prefs = prefsVoz();
@@ -1925,7 +1989,7 @@ async function ativarNotificacoes() {
   const tokens = [...(dadosUsuario.pushTokens || [])];
   if (!tokens.some(t => t.token === token)) {
     tokens.push({ token, dispositivo: `${navigator.platform || 'dispositivo'}`, criadoEm: new Date().toISOString() });
-    await updateDoc(doc(db, 'usuarios', uid), { pushTokens: tokens });
+    await salvarDados({ pushTokens: tokens }, { aviso: false });
   }
   mostrarAviso('Notificações ativadas neste aparelho.');
 }
