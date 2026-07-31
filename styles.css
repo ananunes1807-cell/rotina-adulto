@@ -65,6 +65,24 @@
   --dourado-fundo:#F7EAC4; --dourado-tinta:#93701A;
   color-scheme: light;
 }
+/* Alto contraste: texto quase preto, fundo quase branco, contornos fortes —
+   pensado pra quem precisa de mais contraste que o claro/escuro "suave"
+   já dão. Cores das categorias continuam as mesmas famílias (rosa continua
+   rosa etc.), só mais escuras/fortes pra passar num contraste maior. */
+:root[data-tema="alto-contraste"]{
+  --creme: #FFFFFF; --superficie: #FFFFFF; --tinta: #000000; --tinta-suave: #1A1A1A;
+  --linha: #000000; --anel: #000000;
+  --sombra: 0 0 0 1.5px #000000;
+  --rosa-fundo: #F8DCE6;   --rosa-tinta: #7A0030;
+  --lilas-fundo: #E7DEF8;  --lilas-tinta: #43267A;
+  --ceu-fundo:  #DBEDF8;   --ceu-tinta:  #0D4E63;
+  --menta-fundo:#DCF2E4;   --menta-tinta:#14522F;
+  --pessego-fundo:#FBE3D0; --pessego-tinta:#7A3D14;
+  --areia-fundo: #EFE9DE;  --areia-tinta: #3D3520;
+  --dourado-fundo:#F7EAC4; --dourado-tinta:#5C4610;
+  color-scheme: light;
+}
+:root[data-tema="alto-contraste"] :focus-visible{ outline:3px solid #000000; outline-offset:2px; }
 
 /* ---------- Tamanho da letra (acessibilidade) ---------- */
 :root{ font-size:100%; }
@@ -214,6 +232,10 @@ button{ font-family:inherit; cursor:pointer; }
 .conta-linha{ display:flex; align-items:center; justify-content:space-between; gap:.75em; }
 .conta-rotulo{ display:flex; align-items:center; gap:.4em; font-size:.82rem; font-weight:600; color:var(--tinta-suave); }
 .conta-rotulo svg{ width:1.1em; height:1.1em; flex:0 0 auto; }
+#temaEscolha{
+  width:auto; max-width:9.5rem; padding:.4rem .5rem; min-height:38px; border-radius:10px; border:1.5px solid var(--linha);
+  font-family:var(--fonte-corpo); font-size:.78rem; color:var(--tinta); background:var(--creme);
+}
 .fonte-controle{ display:flex; align-items:center; gap:.4em; flex-wrap:wrap; }
 .fonte-controle #fonteMenos, .fonte-controle #fonteMais{
   width:1.9em; height:1.9em; border-radius:50%; border:1.5px solid var(--linha); background:var(--creme);
@@ -284,11 +306,11 @@ button{ font-family:inherit; cursor:pointer; }
 @media (min-width:760px){
   .painel{
     display:grid; grid-template-columns:repeat(3,1fr); grid-auto-flow:row dense;
-    gap:1rem; align-items:start;
+    gap:.75rem; align-items:start;
   }
 }
 @media (max-width:759px){
-  .painel{ display:flex; flex-direction:column; gap:.75rem; }
+  .painel{ display:flex; flex-direction:column; gap:.6rem; }
   .bloco{ width:100%; }
   .bloco-titulo{ font-size:.98rem; }
 }
@@ -571,6 +593,13 @@ button{ font-family:inherit; cursor:pointer; }
 .escala-btn svg{ width:1.05rem; height:1.05rem; }
 .escala-btn span{ font-size:.64rem; font-weight:600; }
 .escala-btn[aria-pressed="true"]{ border-color:var(--cor-tinta); background:var(--cor-fundo); color:var(--cor-tinta); }
+.escala-emoji{ font-size:1.6rem; line-height:1; }
+/* Bateria da energia: maior que o ícone padrão, com cor própria por nível
+   (reconhecível mesmo sem cor, já que a seleção usa borda/fundo, não a cor do ícone). */
+#grupoEnergia .escala-btn svg{ width:1.6rem; height:1.6rem; }
+#grupoEnergia .escala-btn[data-valor="baixa"] svg{ color:var(--pessego-tinta); }
+#grupoEnergia .escala-btn[data-valor="media"] svg{ color:var(--dourado-tinta); }
+#grupoEnergia .escala-btn[data-valor="alta"] svg{ color:var(--menta-tinta); }
 
 /* ---------- Conquistas ---------- */
 .medalhas{ display:flex; flex-wrap:wrap; gap:8px; }

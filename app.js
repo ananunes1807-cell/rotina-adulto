@@ -64,19 +64,44 @@ let itemEmEdicao = null;
 let diaDialogAtual = null;
 let blocoEmEdicao = null;
 
-// ---------- Tema claro/escuro ----------
+// ---------- Tema (aparência) ----------
+// Três opções: claro suave, escuro suave (os dois de sempre, só renomeados
+// na tela) e alto contraste (novo). Aplica na hora pelo localStorage (evita
+// o "flash" de tema errado antes do login) e, com a pessoa logada, salva
+// também no Firestore — assim abrir em outro aparelho já vem com a mesma
+// escolha, sem depender só do localStorage daquele aparelho.
 function aplicarTema(tema) {
   document.documentElement.setAttribute('data-tema', tema);
-  $('interruptorTema').setAttribute('aria-pressed', tema === 'escuro' ? 'true' : 'false');
+  const select = $('temaEscolha');
+  if (select) select.value = tema;
 }
 const temaSalvo = localStorage.getItem('tema');
 aplicarTema(temaSalvo || (window.matchMedia('(prefers-color-scheme: dark)').matches ? 'escuro' : 'claro'));
-function alternarTema() {
-  const novo = document.documentElement.getAttribute('data-tema') === 'escuro' ? 'claro' : 'escuro';
-  localStorage.setItem('tema', novo);
-  aplicarTema(novo);
+async function definirTema(tema) {
+  localStorage.setItem('tema', tema);
+  aplicarTema(tema);
+  if (!uid) return;
+  try {
+    await updateDoc(doc(db, 'usuarios', uid), { tema });
+  } catch (erro) {
+    console.error('Erro ao salvar tema:', erro);
+  }
 }
-$('interruptorTema').addEventListener('click', alternarTema);
+$('temaEscolha').addEventListener('change', () => definirTema($('temaEscolha').value));
+// Ao logar (ou trocar de aparelho), se o Firestore tiver uma escolha
+// diferente da que está aplicada agora (vinda do localStorage local ou do
+// sistema), usa a do Firestore — ela é a fonte "oficial" por usuária.
+let temaSincronizadoDoServidor = false;
+function sincronizarTemaDoServidor() {
+  if (temaSincronizadoDoServidor) return;
+  const temaServidor = dadosUsuario && dadosUsuario.tema;
+  if (!temaServidor) return;
+  temaSincronizadoDoServidor = true;
+  if (document.documentElement.getAttribute('data-tema') !== temaServidor) {
+    localStorage.setItem('tema', temaServidor);
+    aplicarTema(temaServidor);
+  }
+}
 
 // ---------- Tamanho da letra ----------
 const NIVEIS_FONTE = [
@@ -163,6 +188,7 @@ onAuthStateChanged(auth, async user => {
   if (!user) {
     $('loginScreen').hidden = false;
     $('appScreen').hidden = true;
+    temaSincronizadoDoServidor = false; // pra sincronizar de novo se logar com outra conta
     return;
   }
   uid = user.uid;
@@ -440,6 +466,7 @@ function criarLinhaItem(item, { data = hojeISO(), comAcoes = false, comChat = fa
 // remontar o calendário grande (30+ botões) quando quem mudou foi um
 // checkbox na aba Hoje.
 function renderizarTudo() {
+  sincronizarTemaDoServidor();
   renderizarCabecalho();
   montarCalendarioMini();
   renderizarAbaVisivel();
@@ -581,17 +608,87 @@ function renderizarDepoisBloco() {
 }
 
 // ---------- Descarregar a mente ----------
+// Causa real do texto sumindo: o campo só gravava depois de 600ms parado de
+// digitar (debounce), sem nada que "descarregasse" essa gravação pendente
+// se a página recarregasse antes disso — e a legenda "salvo automaticamente"
+// era um texto fixo, sempre ali, sem relação com o que de fato tinha sido
+// salvo. Ou seja: recarregar rápido demais perdia o texto de verdade, e a
+// legenda nunca avisava. Corrigido com: backup imediato no localStorage (que
+// sobrevive ao reload mesmo antes do Firestore confirmar), gravação disparada
+// também ao sair do campo/trocar de aba (não só pelo debounce), e a legenda
+// virou um status real.
+function chaveBackupMente() { return `rotina-adulto:mente:${uid}:${hojeISO()}`; }
+function lerBackupMente() {
+  try {
+    const bruto = localStorage.getItem(chaveBackupMente());
+    return bruto ? JSON.parse(bruto) : null;
+  } catch { return null; }
+}
+function gravarBackupMente(texto) {
+  try { localStorage.setItem(chaveBackupMente(), JSON.stringify({ texto, hora: Date.now() })); } catch {}
+}
+function limparBackupMente() {
+  try { localStorage.removeItem(chaveBackupMente()); } catch {}
+}
+function definirStatusMente(texto) {
+  const el = $('menteLegenda');
+  if (el) el.textContent = texto;
+}
+let menteBackupRestaurado = false;
 function renderizarMente() {
   const el = $('menteTexto');
   if (document.activeElement === el) return;
+  if (!menteBackupRestaurado) {
+    menteBackupRestaurado = true;
+    const backup = lerBackupMente();
+    const salvo = (dadosUsuario.mente || {})[hojeISO()] || '';
+    if (backup && backup.texto !== salvo) {
+      // Tem texto local que nunca chegou a ser confirmado no Firestore
+      // (recarregou antes do debounce terminar, ou ficou offline). Mostra
+      // esse texto — não o que estava salvo antes — e tenta gravar de novo.
+      el.value = backup.texto;
+      salvarMenteAgora(backup.texto);
+      return;
+    }
+    if (backup) limparBackupMente();
+  }
   el.value = (dadosUsuario.mente || {})[hojeISO()] || '';
+  // Não mexe na legenda aqui: salvarMenteAgora() já controla o status
+  // (Salvando.../Salvo.), e como renderizarTudo() roda de forma síncrona
+  // dentro da própria gravação, resetar a legenda aqui pisaria nesse status
+  // no meio da gravação sempre que o campo não estivesse com foco.
+}
+async function salvarMenteAgora(texto) {
+  definirStatusMente('Salvando…');
+  try {
+    await salvarHistoricoDia('mente', hojeISO(), texto, { aviso: false });
+    definirStatusMente('Salvo.');
+    limparBackupMente();
+  } catch {
+    definirStatusMente('Não foi possível salvar. Seu texto está guardado neste aparelho e será enviado quando a internet voltar.');
+  }
 }
 let menteDebounce;
 $('menteTexto').addEventListener('input', () => {
+  const texto = $('menteTexto').value;
+  gravarBackupMente(texto); // sobrevive a um reload mesmo antes do debounce terminar
+  definirStatusMente('Salvando…');
   clearTimeout(menteDebounce);
-  menteDebounce = setTimeout(async () => {
-    await salvarHistoricoDia('mente', hojeISO(), $('menteTexto').value, { aviso: false });
-  }, 600);
+  menteDebounce = setTimeout(() => { menteDebounce = null; salvarMenteAgora(texto); }, 800);
+});
+function flusharMenteSePendente() {
+  if (!menteDebounce) return;
+  clearTimeout(menteDebounce);
+  menteDebounce = null;
+  salvarMenteAgora($('menteTexto').value);
+}
+$('menteTexto').addEventListener('blur', flusharMenteSePendente);
+document.addEventListener('visibilitychange', () => {
+  if (document.visibilityState === 'hidden') flusharMenteSePendente();
+});
+window.addEventListener('online', () => {
+  const backup = lerBackupMente();
+  if (backup) salvarMenteAgora(backup.texto);
 });
 
 // ---------- Autocuidado ----------

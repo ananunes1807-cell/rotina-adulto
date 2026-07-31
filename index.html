@@ -8,7 +8,7 @@
 <link rel="manifest" href="./manifest.webmanifest">
 <link rel="icon" href="./icon-192.png">
 <link rel="apple-touch-icon" href="./icon-192.png">
-<link rel="stylesheet" href="./styles.css?v=20">
+<link rel="stylesheet" href="./styles.css?v=21">
 </head>
 <body>
 <div id="anuncioPainel" class="sr-only" aria-live="polite" aria-atomic="true"></div>
@@ -112,7 +112,11 @@
           </div>
           <div class="conta-linha">
             <span class="conta-rotulo"><svg><use href="#i-sol"/></svg>Tema</span>
-            <button class="interruptor" id="interruptorTema" aria-pressed="false" aria-label="Alternar tema escuro" type="button"></button>
+            <select id="temaEscolha" aria-label="Escolher tema de aparência">
+              <option value="claro">Claro suave</option>
+              <option value="escuro">Escuro suave</option>
+              <option value="alto-contraste">Alto contraste</option>
+            </select>
           </div>
           <div class="conta-linha">
             <span class="conta-rotulo"><svg><use href="#i-letra"/></svg>Letra</span>
@@ -207,7 +211,7 @@
           <button class="arrastar-alca" aria-label="Reordenar bloco Descarregar a mente" tabindex="0"><svg><use href="#i-alca"/></svg></button>
         </div>
         <textarea class="mente-area" id="menteTexto" placeholder="O que está passando pela cabeça agora? Pode escrever sem se preocupar em organizar."></textarea>
-        <p class="mente-legenda">Fica só aqui, salvo automaticamente.</p>
+        <p class="mente-legenda" id="menteLegenda" aria-live="polite">Fica só aqui.</p>
       </article>
 
       <article class="bloco" data-cor="menta" data-id="autocuidado">
@@ -258,10 +262,10 @@
         <div class="escala-grupo">
           <p class="escala-rotulo">Como você está?</p>
           <div class="escala-opcoes" id="grupoHumor">
-            <button class="escala-btn" data-valor="calma" aria-pressed="false" type="button"><svg><use href="#i-calma"/></svg><span>Calma</span></button>
-            <button class="escala-btn" data-valor="ok" aria-pressed="false" type="button"><svg><use href="#i-ok"/></svg><span>Ok</span></button>
-            <button class="escala-btn" data-valor="agitada" aria-pressed="false" type="button"><svg><use href="#i-agitada"/></svg><span>Agitada</span></button>
-            <button class="escala-btn" data-valor="cansada" aria-pressed="false" type="button"><svg><use href="#i-cansada"/></svg><span>Cansada</span></button>
+            <button class="escala-btn" data-valor="calma" aria-pressed="false" type="button"><span class="escala-emoji" aria-hidden="true">😌</span><span>Calma</span></button>
+            <button class="escala-btn" data-valor="ok" aria-pressed="false" type="button"><span class="escala-emoji" aria-hidden="true">🙂</span><span>Ok</span></button>
+            <button class="escala-btn" data-valor="agitada" aria-pressed="false" type="button"><span class="escala-emoji" aria-hidden="true">😣</span><span>Agitada</span></button>
+            <button class="escala-btn" data-valor="cansada" aria-pressed="false" type="button"><span class="escala-emoji" aria-hidden="true">😴</span><span>Cansada</span></button>
           </div>
         </div>
         <div class="escala-grupo">
